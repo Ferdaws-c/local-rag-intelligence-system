@@ -1,18 +1,16 @@
 """
-app.py — SmartHome Hub Assistant (Streamlit Web Interface)
-===========================================================
-Launches the web UI for the local RAG assistant.
-
+app.py — Local RAG Intelligence System (Streamlit Web Interface)
+=================================================================
 Run with:
     streamlit run app.py
 
 Features:
+  - Persistent chat history with full CRUD (create, rename, delete sessions)
   - Sidebar model selector (3 speed/quality options)
-  - Real-time download progress popup on first model load
+  - Real-time model loading progress
   - Live token-by-token streaming of model responses
   - Source document citations with similarity scores
-  - Per-model chat history and retrieval log
-  - Light / dark mode compatible (toggle via ⋮ → Settings)
+  - Light / dark mode compatible
 """
 
 import threading
@@ -20,148 +18,276 @@ import threading
 import streamlit as st
 from streamlit.runtime.scriptrunner import add_script_run_ctx, get_script_run_ctx
 
+from chat_history import (
+    add_message,
+    create_session,
+    delete_session,
+    get_all_sessions,
+    get_messages,
+    init_history_db,
+    rename_session,
+    session_exists,
+)
 from rag_core import answer_query, init_models
 
 # ------------------------------------------------------------------
 # Page Configuration
 # ------------------------------------------------------------------
 st.set_page_config(
-    page_title="SmartHome Hub Assistant",
-    page_icon="🏠",
+    page_title="Local RAG Intelligence System",
+    page_icon="🧠",
     layout="centered",
 )
 
-# Prevent transparency bleed-through when switching to light mode
+# Disable the 'c' (clear cache) and 'r' (rerun) keyboard shortcuts
+import streamlit.components.v1 as components
+components.html(
+    """
+    <script>
+    const doc = window.parent.document;
+    doc.addEventListener('keydown', function(e) {
+        if ((e.key.toLowerCase() === 'c' || e.key.toLowerCase() === 'r') &&
+            e.target.nodeName !== 'INPUT' && e.target.nodeName !== 'TEXTAREA') {
+            e.stopPropagation();
+            e.preventDefault();
+        }
+    }, true);
+    </script>
+    """,
+    height=0,
+    width=0,
+)
+
+# Solid background colors to prevent transparency bleed in light mode
 st.markdown(
     """
     <style>
     .stApp { background-color: var(--background-color); }
     [data-testid="stSidebar"] { background-color: var(--secondary-background-color); }
+    /* Make sidebar session buttons look clean */
+    div[data-testid="stSidebar"] .stButton > button {
+        width: 100%;
+        text-align: left;
+        border: none;
+        background: transparent;
+        padding: 4px 8px;
+        border-radius: 6px;
+    }
+    div[data-testid="stSidebar"] .stButton > button:hover {
+        background: rgba(128,128,128,0.15);
+    }
     </style>
     """,
     unsafe_allow_html=True,
 )
 
 # ------------------------------------------------------------------
-# Sidebar — Model Selector & Knowledge Base Info
+# Database & Session Initialization
 # ------------------------------------------------------------------
-with st.sidebar:
-    st.header("⚙️ Model Settings")
+init_history_db()
 
-    MODEL_OPTIONS = {
-        "⚡ Fast — qwen2.5-0.5b (~1–2s)":          "qwen2.5-0.5b",
-        "⚖️ Balanced — phi-3.5-mini (~5–10s)":     "phi-3.5-mini",
-        "🎯 Best Quality — phi-4-mini (~8–15s)":    "phi-4-mini",
-    }
-
-    selected_label = st.selectbox(
-        "Chat Model",
-        options=list(MODEL_OPTIONS.keys()),
-        index=1,
-        help="Smaller = faster responses. Larger = higher quality answers.",
-    )
-    selected_model = MODEL_OPTIONS[selected_label]
-    st.caption(f"Active: `{selected_model}`")
-    st.divider()
-
-    st.header("ℹ️ Knowledge Base")
-    st.markdown("""
-    **Documents loaded:**
-    - FAQ
-    - Setup Guide
-    - Technical Specifications
-    - Warranty & Returns
-    - Troubleshooting Guide
-
-    **Embedding model:** `qwen3-embedding-0.6b`
-    """)
-
-    st.divider()
-    st.header("🔍 Retrieval Log")
-    retrieval_log_placeholder = st.empty()
-
+# Initialize session state keys
+if "active_session_id" not in st.session_state:
+    st.session_state.active_session_id = None
+if "renaming_session_id" not in st.session_state:
+    st.session_state.renaming_session_id = None
+if "confirm_delete_id" not in st.session_state:
+    st.session_state.confirm_delete_id = None
 
 # ------------------------------------------------------------------
-# Cached Model Loading with Real-Time Download Progress
+# Cached Model Loading
 # ------------------------------------------------------------------
+MODEL_OPTIONS = {
+    "⚡ Fast — qwen2.5-0.5b (~1–2s)":       "qwen2.5-0.5b",
+    "⚖️ Balanced — phi-3.5-mini (~5–10s)":  "phi-3.5-mini",
+    "🎯 Best Quality — phi-4-mini (~8–15s)": "phi-4-mini",
+}
+
+
 @st.cache_resource
 def load_models(chat_model_name: str) -> dict:
     """
-    Loads both the embedding model and the selected chat model.
-
-    Decorated with @st.cache_resource so each model is loaded only once
-    per Streamlit session. Switching models loads the new model once,
-    then serves it instantly on all subsequent queries.
-
-    Shows a live download-progress popup only on the first load of each
-    model. On cache hits the function body is skipped entirely.
+    Loads the embedding model and the selected chat model.
+    Cached per model name — only runs once per model per process lifetime.
     """
     with st.status("🔄 Loading AI Models...", expanded=True) as status:
-
-        # Capture the Streamlit session context so the SDK's background
-        # download thread can update the progress bars safely.
-        ctx = get_script_run_ctx()
-
-        # Embedding model progress bar
-        st.markdown("**Embedding model** — `qwen3-embedding-0.6b`")
-        embed_bar  = st.progress(0, text="Checking cache...")
-        embed_done = st.empty()
+        ctx      = get_script_run_ctx()
+        embed_ui = st.empty()
+        chat_ui  = st.empty()
 
         def embed_cb(pct: float):
             if get_script_run_ctx() is None:
                 add_script_run_ctx(threading.current_thread(), ctx)
             p = min(int(pct), 100)
-            embed_bar.progress(p, text=f"Downloading: {p}%")
-
-        # Chat model progress bar
-        st.markdown(f"**Chat model** — `{chat_model_name}`")
-        chat_bar  = st.progress(0, text="Checking cache...")
-        chat_done = st.empty()
+            embed_ui.progress(p, text=f"Loading Embedding Model: {p}%")
 
         def chat_cb(pct: float):
             if get_script_run_ctx() is None:
                 add_script_run_ctx(threading.current_thread(), ctx)
             p = min(int(pct), 100)
-            chat_bar.progress(p, text=f"Downloading: {p}%")
+            chat_ui.progress(p, text=f"Loading Chat Model (`{chat_model_name}`): {p}%")
 
         result = init_models(
             chat_model_name,
             embed_progress_cb=embed_cb,
             chat_progress_cb=chat_cb,
         )
-
-        embed_done.success("Embedding model ready ✅")
-        chat_done.success(f"`{chat_model_name}` ready ✅")
-        status.update(label="✅ All models loaded!", state="complete", expanded=False)
+        status.update(label="✅ All models loaded and ready!", state="complete", expanded=False)
 
     return result
 
 
 # ------------------------------------------------------------------
-# App Header
+# Sidebar
 # ------------------------------------------------------------------
-st.title("🏠 SmartHome Hub v2.0 Assistant")
+with st.sidebar:
+
+    # ── New Chat Button ────────────────────────────────────────────
+    if st.button("✏️  New Chat", use_container_width=True, type="primary"):
+        # Get the currently selected model (read from session state if set)
+        current_model = st.session_state.get("selected_model", "phi-3.5-mini")
+        new_id = create_session(current_model)
+        st.session_state.active_session_id = new_id
+        st.session_state.renaming_session_id = None
+        st.session_state.confirm_delete_id   = None
+        st.rerun()
+
+    st.divider()
+
+    # ── Chat History ───────────────────────────────────────────────
+    st.markdown("**💬 Chat History**")
+
+    all_sessions = get_all_sessions()
+
+    if not all_sessions:
+        st.caption("No chats yet. Start typing below!")
+    else:
+        for session in all_sessions:
+            sid   = session["id"]
+            sname = session["name"]
+            is_active = (sid == st.session_state.active_session_id)
+
+            # ── Rename Mode ────────────────────────────────────────
+            if st.session_state.renaming_session_id == sid:
+                new_name = st.text_input(
+                    "Rename",
+                    value=sname,
+                    key=f"rename_input_{sid}",
+                    label_visibility="collapsed",
+                )
+                col_save, col_cancel = st.columns(2)
+                with col_save:
+                    if st.button("Save", key=f"save_{sid}", use_container_width=True):
+                        if new_name.strip():
+                            rename_session(sid, new_name.strip())
+                        st.session_state.renaming_session_id = None
+                        st.rerun()
+                with col_cancel:
+                    if st.button("Cancel", key=f"cancel_{sid}", use_container_width=True):
+                        st.session_state.renaming_session_id = None
+                        st.rerun()
+
+            # ── Delete Confirmation Mode ───────────────────────────
+            elif st.session_state.confirm_delete_id == sid:
+                st.warning(f"Delete **{sname[:30]}**?")
+                col_yes, col_no = st.columns(2)
+                with col_yes:
+                    if st.button("Delete", key=f"yes_{sid}", use_container_width=True, type="primary"):
+                        delete_session(sid)
+                        # If we deleted the active chat, clear it
+                        if st.session_state.active_session_id == sid:
+                            st.session_state.active_session_id = None
+                        st.session_state.confirm_delete_id = None
+                        st.rerun()
+                with col_no:
+                    if st.button("Keep", key=f"no_{sid}", use_container_width=True):
+                        st.session_state.confirm_delete_id = None
+                        st.rerun()
+
+            # ── Normal Mode ────────────────────────────────────────
+            else:
+                col_name, col_edit, col_del = st.columns([6, 1, 1])
+
+                with col_name:
+                    label = f"{'▶ ' if is_active else ''}{sname}"
+                    if st.button(
+                        label,
+                        key=f"load_{sid}",
+                        use_container_width=True,
+                        help=f"Model: {session['model']}",
+                    ):
+                        st.session_state.active_session_id  = sid
+                        st.session_state.renaming_session_id = None
+                        st.session_state.confirm_delete_id   = None
+                        st.rerun()
+
+                with col_edit:
+                    if st.button("✏️", key=f"rename_{sid}", help="Rename"):
+                        st.session_state.renaming_session_id = sid
+                        st.session_state.confirm_delete_id   = None
+                        st.rerun()
+
+                with col_del:
+                    if st.button("🗑️", key=f"delete_{sid}", help="Delete"):
+                        st.session_state.confirm_delete_id   = sid
+                        st.session_state.renaming_session_id = None
+                        st.rerun()
+
+    st.divider()
+
+    # ── Model Settings ─────────────────────────────────────────────
+    st.markdown("**⚙️ Model Settings**")
+    selected_label = st.selectbox(
+        "Chat Model",
+        options=list(MODEL_OPTIONS.keys()),
+        index=1,
+        help="Smaller = faster. Larger = better answers.",
+    )
+    selected_model = MODEL_OPTIONS[selected_label]
+    st.session_state["selected_model"] = selected_model
+    st.caption(f"Active: `{selected_model}`")
+
+    st.divider()
+
+    # ── Knowledge Base Info ────────────────────────────────────────
+    st.markdown("**ℹ️ Knowledge Base**")
+    st.markdown("""
+    - FAQ
+    - Setup Guide
+    - Technical Specifications
+    - Warranty & Returns
+    - Troubleshooting Guide
+
+    Embedding: `qwen3-embedding-0.6b`
+    """)
+
+
+# ------------------------------------------------------------------
+# Ensure an active session exists
+# ------------------------------------------------------------------
+if st.session_state.active_session_id is None or \
+   not session_exists(st.session_state.active_session_id):
+    # Auto-create a session on first visit
+    new_id = create_session(selected_model)
+    st.session_state.active_session_id = new_id
+
+active_session_id = st.session_state.active_session_id
+
+# ------------------------------------------------------------------
+# Main Chat Area
+# ------------------------------------------------------------------
+st.title("🧠 Local RAG Intelligence System")
 st.caption(
-    "Ask any question about your SmartHome Hub. "
-    "All answers come from the local knowledge base — no internet required."
+    "Query your documents using fully offline, privacy-preserving AI. "
+    "All answers are grounded in the local knowledge base."
 )
 st.divider()
 
-# ------------------------------------------------------------------
-# Session State — keyed per model so switching models starts fresh
-# ------------------------------------------------------------------
-chat_key = f"messages_{selected_model}"
-log_key  = f"log_{selected_model}"
+# Load messages for the active session from the database
+messages = get_messages(active_session_id)
 
-if chat_key not in st.session_state:
-    st.session_state[chat_key] = []
-if log_key not in st.session_state:
-    st.session_state[log_key] = []
-
-# ------------------------------------------------------------------
-# Display Existing Chat History
-# ------------------------------------------------------------------
-for msg in st.session_state[chat_key]:
+# Display all messages in the active session
+for msg in messages:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
         if msg["role"] == "assistant" and "sources" in msg:
@@ -173,9 +299,9 @@ for msg in st.session_state[chat_key]:
                     st.caption(src["content"][:200] + "...")
 
 # ------------------------------------------------------------------
-# Chat Input & Response Generation
+# Chat Input
 # ------------------------------------------------------------------
-if prompt := st.chat_input("Ask a question about your SmartHome Hub..."):
+if prompt := st.chat_input("Ask a question about your documents..."):
 
     # Load (or retrieve cached) models
     try:
@@ -184,12 +310,12 @@ if prompt := st.chat_input("Ask a question about your SmartHome Hub..."):
         st.error(str(exc))
         st.stop()
 
-    # Display user message
+    # Persist and display user message
+    add_message(active_session_id, "user", prompt)
     with st.chat_message("user"):
         st.markdown(prompt)
-    st.session_state[chat_key].append({"role": "user", "content": prompt})
 
-    # Stream the assistant's response
+    # Generate and stream assistant response
     with st.chat_message("assistant"):
         answer_placeholder = st.empty()
 
@@ -209,7 +335,6 @@ if prompt := st.chat_input("Ask a question about your SmartHome Hub..."):
         answer  = result["answer"]
         sources = result["sources"]
 
-        # Replace the streaming placeholder with the final clean text
         answer_placeholder.markdown(answer)
 
         with st.expander("📄 Sources retrieved", expanded=True):
@@ -219,21 +344,8 @@ if prompt := st.chat_input("Ask a question about your SmartHome Hub..."):
                 )
                 st.caption(src["content"][:200] + "...")
 
-    # Persist to session state
-    st.session_state[chat_key].append({
-        "role": "assistant", "content": answer, "sources": sources,
-    })
-    st.session_state[log_key].insert(0, {"query": prompt, "sources": sources})
+    # Persist assistant response to history DB
+    add_message(active_session_id, "assistant", answer, sources=sources)
 
-# ------------------------------------------------------------------
-# Retrieval Log in Sidebar (last 3 queries)
-# ------------------------------------------------------------------
-with retrieval_log_placeholder.container():
-    entries = st.session_state.get(log_key, [])
-    if entries:
-        for entry in entries[:3]:
-            st.caption(f"Q: {entry['query'][:40]}...")
-            for src in entry["sources"][:2]:
-                st.caption(f"  → {src['filename']} ({src['score']:.3f})")
-    else:
-        st.caption("No queries yet.")
+    # Refresh sidebar session names (first message auto-names the session)
+    st.rerun()
