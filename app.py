@@ -39,15 +39,18 @@ st.set_page_config(
     layout="centered",
 )
 
-# Disable the 'c' (clear cache) and 'r' (rerun) keyboard shortcuts
+# Disable the annoying 'c' (clear cache) and 'r' (rerun) keyboard shortcuts
 import streamlit.components.v1 as components
 components.html(
     """
     <script>
-    const doc = window.parent.document;
-    doc.addEventListener('keydown', function(e) {
-        if ((e.key.toLowerCase() === 'c' || e.key.toLowerCase() === 'r') &&
-            e.target.nodeName !== 'INPUT' && e.target.nodeName !== 'TEXTAREA') {
+    const parentWin = window.parent;
+    parentWin.addEventListener('keydown', function(e) {
+        if ((e.key.toLowerCase() === 'c' || e.key.toLowerCase() === 'r') && 
+            e.target.nodeName !== 'INPUT' && 
+            e.target.nodeName !== 'TEXTAREA' &&
+            !e.target.isContentEditable) {
+            e.stopImmediatePropagation();
             e.stopPropagation();
             e.preventDefault();
         }

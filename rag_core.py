@@ -96,8 +96,8 @@ def expand_query(query: str, chat_client) -> str:
         "You are a search query optimizer.\n"
         "Convert the user's question into 3 to 5 search keywords or synonyms "
         "relevant to finding information in a technical product manual.\n"
-        "Example: 'when my guarantee ends' -> 'warranty expiration period ends'\n"
-        "Example: 'connecting to router' -> 'wifi network connection router setup'\n"
+        "CRITICAL: Map colloquial or informal terms to standard technical terms. "
+        "For example, convert 'guarantee' or 'refund' to 'warranty', 'wires' to 'cables', 'net' to 'wifi network'.\n"
         "Output ONLY the optimized keywords separated by spaces. Do not write full sentences, notes, or explanations."
     )
     messages = [
