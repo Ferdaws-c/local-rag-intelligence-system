@@ -147,6 +147,8 @@ with st.sidebar:
     if st.button("✏️  New Chat", use_container_width=True, type="primary"):
         st.session_state.active_session_id = "temp_new_session"
         st.session_state.active_options_id = None
+        if "chat_history_selectbox" in st.session_state:
+            del st.session_state["chat_history_selectbox"]
         st.rerun()
 
     st.divider()
@@ -228,6 +230,8 @@ with st.sidebar:
                         if new_name.strip() and new_name.strip() != selected_name:
                             rename_session(selected_id, new_name.strip())
                         st.session_state.active_options_id = None
+                        if "chat_history_selectbox" in st.session_state:
+                            del st.session_state["chat_history_selectbox"]
                         st.rerun()
                 with col_cancel:
                     if st.button("Cancel", key=f"cancel_btn_{selected_id}", use_container_width=True):
@@ -243,6 +247,8 @@ with st.sidebar:
                         delete_session(selected_id)
                         st.session_state.active_session_id = "temp_new_session"
                         st.session_state.active_options_id = None
+                        if "chat_history_selectbox" in st.session_state:
+                            del st.session_state["chat_history_selectbox"]
                         st.rerun()
                 with col_no:
                     if st.button("No, Keep", key=f"del_cancel_{selected_id}", use_container_width=True):
