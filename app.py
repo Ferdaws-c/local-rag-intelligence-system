@@ -92,8 +92,8 @@ init_history_db()
 # Initialize session state keys
 if "active_session_id" not in st.session_state:
     st.session_state.active_session_id = None
-if "editing_session_id" not in st.session_state:
-    st.session_state.editing_session_id = None
+if "active_options_id" not in st.session_state:
+    st.session_state.active_options_id = None
 
 # ------------------------------------------------------------------
 # Cached Model Loading
@@ -144,18 +144,18 @@ def load_models(chat_model_name: str) -> dict:
 with st.sidebar:
 
     # ── New Chat Button ────────────────────────────────────────────
-    if st.button("New Chat", use_container_width=True, type="primary"):
+    if st.button("✏️  New Chat", use_container_width=True, type="primary"):
         # Get the currently selected model (read from session state if set)
         current_model = st.session_state.get("selected_model", "phi-3.5-mini")
         new_id = create_session(current_model)
         st.session_state.active_session_id = new_id
-        st.session_state.editing_session_id = None
+        st.session_state.active_options_id = None
         st.rerun()
 
     st.divider()
 
     # ── Chat History ───────────────────────────────────────────────
-    st.markdown("**Chat History**")
+    st.markdown("**💬 Chat History**")
 
     all_sessions = get_all_sessions()
 
@@ -166,59 +166,63 @@ with st.sidebar:
             sid   = session["id"]
             sname = session["name"]
             is_active = (sid == st.session_state.active_session_id)
+            is_options_open = (sid == st.session_state.active_options_id)
 
-            # ── Edit Mode ──────────────────────────────────────────
-            if st.session_state.editing_session_id == sid:
+            col_name, col_arrow = st.columns([7, 1])
+
+            with col_name:
+                label = f"{'▶ ' if is_active else ''}{sname}"
+                if st.button(
+                    label,
+                    key=f"load_{sid}",
+                    use_container_width=True,
+                    help=f"Model: {session['model']}",
+                ):
+                    st.session_state.active_session_id = sid
+                    st.session_state.active_options_id = None
+                    st.rerun()
+
+            with col_arrow:
+                arrow_label = "▲" if is_options_open else "▼"
+                if st.button(arrow_label, key=f"arrow_{sid}", help="Toggle options"):
+                    if is_options_open:
+                        st.session_state.active_options_id = None
+                    else:
+                        st.session_state.active_options_id = sid
+                    st.rerun()
+
+            if is_options_open:
                 new_name = st.text_input(
                     "Rename Chat",
                     value=sname,
-                    key=f"edit_input_{sid}",
+                    key=f"rename_input_{sid}",
                     label_visibility="collapsed",
                 )
+                
                 col_save, col_del, col_cancel = st.columns(3)
                 with col_save:
                     if st.button("Save", key=f"save_{sid}", use_container_width=True):
-                        if new_name.strip():
+                        if new_name.strip() and new_name.strip() != sname:
                             rename_session(sid, new_name.strip())
-                        st.session_state.editing_session_id = None
+                        st.session_state.active_options_id = None
                         st.rerun()
                 with col_del:
-                    if st.button("Delete", key=f"delete_{sid}", use_container_width=True, type="primary"):
+                    if st.button("Delete", key=f"del_{sid}", use_container_width=True, type="primary"):
                         delete_session(sid)
                         if st.session_state.active_session_id == sid:
                             st.session_state.active_session_id = None
-                        st.session_state.editing_session_id = None
+                        st.session_state.active_options_id = None
                         st.rerun()
                 with col_cancel:
-                    if st.button("Cancel", key=f"cancel_{sid}", use_container_width=True):
-                        st.session_state.editing_session_id = None
+                    if st.button("Close", key=f"close_{sid}", use_container_width=True):
+                        st.session_state.active_options_id = None
                         st.rerun()
-
-            # ── Normal Mode ────────────────────────────────────────
-            else:
-                col_name, col_edit = st.columns([4, 1])
-
-                with col_name:
-                    label = f"Active | {sname}" if is_active else sname
-                    if st.button(
-                        label,
-                        key=f"load_{sid}",
-                        use_container_width=True,
-                        help=f"Model: {session['model']}",
-                    ):
-                        st.session_state.active_session_id  = sid
-                        st.session_state.editing_session_id = None
-                        st.rerun()
-
-                with col_edit:
-                    if st.button("Edit", key=f"edit_btn_{sid}", use_container_width=True):
-                        st.session_state.editing_session_id = sid
-                        st.rerun()
+                st.divider()
 
     st.divider()
 
     # ── Model Settings ─────────────────────────────────────────────
-    st.markdown("**Model Settings**")
+    st.markdown("**⚙️ Model Settings**")
     selected_label = st.selectbox(
         "Chat Model",
         options=list(MODEL_OPTIONS.keys()),
