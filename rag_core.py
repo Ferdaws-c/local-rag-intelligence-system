@@ -87,6 +87,43 @@ def get_top_chunks(query: str,
 # ------------------------------------------------------------------
 # Answer Generation
 # ------------------------------------------------------------------
+def expand_query(query: str, chat_client) -> str:
+    """
+    Rewrites the user's natural language question into optimized search keywords
+    to bridge semantic gaps (e.g. converting 'guarantee' to 'warranty').
+    """
+    system_prompt = (
+        "You are a search query optimizer.\n"
+        "Convert the user's question into 3 to 5 search keywords or synonyms "
+        "relevant to finding information in a technical product manual.\n"
+        "Example: 'when my guarantee ends' -> 'warranty expiration period ends'\n"
+        "Example: 'connecting to router' -> 'wifi network connection router setup'\n"
+        "Output ONLY the optimized keywords separated by spaces. Do not write full sentences, notes, or explanations."
+    )
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user",   "content": query}
+    ]
+    
+    keywords = []
+    token_count = 0
+    # Strict low token limit for speed
+    for chunk in chat_client.complete_streaming_chat(messages):
+        if chunk.choices:
+            content = chunk.choices[0].delta.content
+            if content:
+                keywords.append(content)
+                token_count += 1
+                if token_count >= 15:
+                    break
+    
+    expanded = "".join(keywords).strip()
+    return expanded if expanded else query
+
+
+# ------------------------------------------------------------------
+# Answer Generation
+# ------------------------------------------------------------------
 def answer_query(question: str,
                  embedding_client,
                  chat_client,
@@ -96,9 +133,10 @@ def answer_query(question: str,
     Full RAG pipeline: Retrieve → Augment → Generate.
 
     Steps:
-      A. Retrieve the top_k document chunks most relevant to the question.
-      B. Build a grounded system prompt containing only those chunks.
-      C. Stream the chat model's response token-by-token.
+      A. Expand the query to standardize synonyms (e.g. guarantee -> warranty).
+      B. Retrieve the top_k document chunks most relevant to the expanded question.
+      C. Build a grounded system prompt containing only those chunks.
+      D. Stream the chat model's response token-by-token.
 
     Parameters:
         question         : The user's natural-language question.
@@ -115,8 +153,11 @@ def answer_query(question: str,
             "sources" : list[dict], # Retrieved chunks used as context
         }
     """
-    # A — Retrieve relevant document chunks
-    chunks = get_top_chunks(question, embedding_client, top_k=top_k)
+    # A — Expand query to resolve synonyms (e.g. guarantee -> warranty)
+    expanded_query = expand_query(question, chat_client)
+    
+    # B — Retrieve relevant document chunks using the expanded query
+    chunks = get_top_chunks(expanded_query, embedding_client, top_k=top_k)
 
     # B — Build grounded system prompt
     # Each chunk is prefixed with its source file name for citation
@@ -127,7 +168,7 @@ def answer_query(question: str,
     context_text = "\n\n".join(context_lines)
 
     system_prompt = (
-        "You are a helpful customer support assistant for the SmartHome Hub v2.0.\n\n"
+        "You are an intelligent document retrieval assistant.\n\n"
         "STRICT INSTRUCTIONS:\n"
         "1. Answer the user's question using ONLY the exact information provided "
         "in the Context section below. Do not use any outside knowledge.\n"
