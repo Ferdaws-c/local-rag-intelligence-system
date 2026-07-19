@@ -234,3 +234,24 @@ def delete_session(session_id: str) -> None:
     conn.execute("DELETE FROM chat_sessions WHERE id = ?", (session_id,))
     conn.commit()
     conn.close()
+
+
+def cleanup_empty_sessions(active_session_id: str | None = None) -> None:
+    """
+    Permanently deletes any chat sessions that contain no messages.
+    Preserves the currently active session to allow user input.
+    """
+    conn = sqlite3.connect(HISTORY_DB)
+    if active_session_id:
+        conn.execute("""
+            DELETE FROM chat_sessions
+            WHERE id NOT IN (SELECT DISTINCT session_id FROM chat_messages)
+              AND id != ?
+        """, (active_session_id,))
+    else:
+        conn.execute("""
+            DELETE FROM chat_sessions
+            WHERE id NOT IN (SELECT DISTINCT session_id FROM chat_messages)
+        """)
+    conn.commit()
+    conn.close()

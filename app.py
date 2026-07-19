@@ -20,6 +20,7 @@ from streamlit.runtime.scriptrunner import add_script_run_ctx, get_script_run_ct
 
 from chat_history import (
     add_message,
+    cleanup_empty_sessions,
     create_session,
     delete_session,
     get_all_sessions,
@@ -145,7 +146,8 @@ with st.sidebar:
 
     # ── New Chat Button ────────────────────────────────────────────
     if st.button("✏️  New Chat", use_container_width=True, type="primary"):
-        # Get the currently selected model (read from session state if set)
+        # Prune previous session if it has 0 messages before creating a new one
+        cleanup_empty_sessions()
         current_model = st.session_state.get("selected_model", "phi-3.5-mini")
         new_id = create_session(current_model)
         st.session_state.active_session_id = new_id
@@ -157,67 +159,75 @@ with st.sidebar:
     # ── Chat History ───────────────────────────────────────────────
     st.markdown("**💬 Chat History**")
 
+    # Search function
+    search_query = st.text_input("🔍 Search Chats", placeholder="Search chat title...", key="chat_search_query", label_visibility="collapsed")
+
     all_sessions = get_all_sessions()
+    
+    # Filter sessions based on search query
+    if search_query:
+        filtered_sessions = [s for s in all_sessions if search_query.lower() in s["name"].lower()]
+    else:
+        filtered_sessions = all_sessions
 
     if not all_sessions:
         st.caption("No chats yet. Start typing below!")
+    elif not filtered_sessions:
+        st.caption("No matching chats found.")
     else:
-        for session in all_sessions:
-            sid   = session["id"]
-            sname = session["name"]
-            is_active = (sid == st.session_state.active_session_id)
-            is_options_open = (sid == st.session_state.active_options_id)
+        # Create option names list for selectbox
+        names_to_sessions = {}
+        for s in filtered_sessions:
+            name = s["name"]
+            if name in names_to_sessions:
+                name = f"{name} ({s['id'][:8]})"
+            names_to_sessions[name] = s
 
-            col_name, col_arrow = st.columns([7, 1])
+        options = list(names_to_sessions.keys())
 
-            with col_name:
-                label = f"{'▶ ' if is_active else ''}{sname}"
-                if st.button(
-                    label,
-                    key=f"load_{sid}",
-                    use_container_width=True,
-                    help=f"Model: {session['model']}",
-                ):
-                    st.session_state.active_session_id = sid
-                    st.session_state.active_options_id = None
+        # Determine active index
+        active_id = st.session_state.active_session_id
+        active_index = 0
+        for i, opt in enumerate(options):
+            if names_to_sessions[opt]["id"] == active_id:
+                active_index = i
+                break
+
+        # Selectbox (matches model selector drop-down)
+        selected_option = st.selectbox(
+            "Select Chat",
+            options=options,
+            index=active_index,
+            key="session_select_dropdown",
+            label_visibility="collapsed"
+        )
+
+        selected_session = names_to_sessions[selected_option]
+        selected_id = selected_session["id"]
+
+        # If user switches session:
+        # 1. Prune the current session if it is empty (0 messages) to save space/memory
+        # 2. Load the target session
+        if selected_id != active_id:
+            cleanup_empty_sessions(selected_id)
+            st.session_state.active_session_id = selected_id
+            st.rerun()
+
+        # Manage current session details
+        with st.expander("⚙️ Manage Current Chat"):
+            new_name = st.text_input("Rename Title", value=selected_session["name"], key="rename_current")
+            col_save, col_del = st.columns(2)
+            with col_save:
+                if st.button("Save", use_container_width=True):
+                    if new_name.strip() and new_name.strip() != selected_session["name"]:
+                        rename_session(selected_id, new_name.strip())
                     st.rerun()
-
-            with col_arrow:
-                arrow_label = "▲" if is_options_open else "▼"
-                if st.button(arrow_label, key=f"arrow_{sid}", help="Toggle options"):
-                    if is_options_open:
-                        st.session_state.active_options_id = None
-                    else:
-                        st.session_state.active_options_id = sid
+            with col_del:
+                if st.button("Delete", use_container_width=True, type="primary"):
+                    delete_session(selected_id)
+                    cleanup_empty_sessions()
+                    st.session_state.active_session_id = None
                     st.rerun()
-
-            if is_options_open:
-                new_name = st.text_input(
-                    "Rename Chat",
-                    value=sname,
-                    key=f"rename_input_{sid}",
-                    label_visibility="collapsed",
-                )
-                
-                col_save, col_del, col_cancel = st.columns(3)
-                with col_save:
-                    if st.button("Save", key=f"save_{sid}", use_container_width=True):
-                        if new_name.strip() and new_name.strip() != sname:
-                            rename_session(sid, new_name.strip())
-                        st.session_state.active_options_id = None
-                        st.rerun()
-                with col_del:
-                    if st.button("Delete", key=f"del_{sid}", use_container_width=True, type="primary"):
-                        delete_session(sid)
-                        if st.session_state.active_session_id == sid:
-                            st.session_state.active_session_id = None
-                        st.session_state.active_options_id = None
-                        st.rerun()
-                with col_cancel:
-                    if st.button("Close", key=f"close_{sid}", use_container_width=True):
-                        st.session_state.active_options_id = None
-                        st.rerun()
-                st.divider()
 
     st.divider()
 
