@@ -14,6 +14,7 @@ Features:
 """
 
 import threading
+import uuid
 
 import streamlit as st
 from streamlit.runtime.scriptrunner import add_script_run_ctx, get_script_run_ctx
@@ -22,6 +23,7 @@ from chat_history import (
     add_message,
     cleanup_empty_sessions,
     create_session,
+    create_session_with_id,
     delete_session,
     get_all_sessions,
     get_messages,
@@ -259,13 +261,10 @@ with st.sidebar:
 
 
 # ------------------------------------------------------------------
-# Ensure an active session exists
+# Ensure an active session exists (in memory only)
 # ------------------------------------------------------------------
-if st.session_state.active_session_id is None or \
-   not session_exists(st.session_state.active_session_id):
-    # Auto-create a session on first visit
-    new_id = create_session(selected_model)
-    st.session_state.active_session_id = new_id
+if st.session_state.active_session_id is None:
+    st.session_state.active_session_id = str(uuid.uuid4())
 
 active_session_id = st.session_state.active_session_id
 
@@ -305,6 +304,10 @@ if prompt := st.chat_input("Ask a question about your documents..."):
     except FileNotFoundError as exc:
         st.error(str(exc))
         st.stop()
+
+    # Lazily create the session in the database only when the first message is sent
+    if not session_exists(active_session_id):
+        create_session_with_id(active_session_id, selected_model)
 
     # Persist and display user message
     add_message(active_session_id, "user", prompt)

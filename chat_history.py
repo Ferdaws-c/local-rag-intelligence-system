@@ -255,3 +255,18 @@ def cleanup_empty_sessions(active_session_id: str | None = None) -> None:
         """)
     conn.commit()
     conn.close()
+
+
+def create_session_with_id(session_id: str, model_name: str) -> None:
+    """
+    Creates a new chat session in the database using a pre-generated UUID.
+    This enables lazy instantiation of chat sessions in the database.
+    """
+    now = datetime.now().isoformat()
+    conn = sqlite3.connect(HISTORY_DB)
+    conn.execute("""
+        INSERT INTO chat_sessions (id, name, model, created_at, updated_at)
+        VALUES (?, 'New Chat', ?, ?, ?)
+    """, (session_id, model_name, now, now))
+    conn.commit()
+    conn.close()
