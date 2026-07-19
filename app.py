@@ -14,16 +14,13 @@ Features:
 """
 
 import threading
-import uuid
 
 import streamlit as st
 from streamlit.runtime.scriptrunner import add_script_run_ctx, get_script_run_ctx
 
 from chat_history import (
     add_message,
-    cleanup_empty_sessions,
     create_session,
-    create_session_with_id,
     delete_session,
     get_all_sessions,
     get_messages,
@@ -93,8 +90,8 @@ st.markdown(
 init_history_db()
 
 # Initialize session state keys
-if "active_session_id" not in st.session_state:
-    st.session_state.active_session_id = None
+if "active_session_id" not in st.session_state or st.session_state.active_session_id is None:
+    st.session_state.active_session_id = "temp_new_session"
 if "active_options_id" not in st.session_state:
     st.session_state.active_options_id = None
 
@@ -148,88 +145,109 @@ with st.sidebar:
 
     # ── New Chat Button ────────────────────────────────────────────
     if st.button("✏️  New Chat", use_container_width=True, type="primary"):
-        # Prune previous session if it has 0 messages before creating a new one
-        cleanup_empty_sessions()
-        current_model = st.session_state.get("selected_model", "phi-3.5-mini")
-        new_id = create_session(current_model)
-        st.session_state.active_session_id = new_id
+        st.session_state.active_session_id = "temp_new_session"
         st.session_state.active_options_id = None
         st.rerun()
 
     st.divider()
 
-    # ── Chat History ───────────────────────────────────────────────
+    # ── Search chats ───────────────────────────────────────────────
     st.markdown("**💬 Chat History**")
-
-    # Search function
-    search_query = st.text_input("🔍 Search Chats", placeholder="Search chat title...", key="chat_search_query", label_visibility="collapsed")
+    search_q = st.text_input(
+        "Search Chats",
+        key="chat_search_input",
+        label_visibility="collapsed",
+        placeholder="🔍 Search chats...",
+    )
 
     all_sessions = get_all_sessions()
+
+    # Filter sessions by search query if present
+    if search_q.strip():
+        all_sessions = [
+            s for s in all_sessions if search_q.lower() in s["name"].lower()
+        ]
+
+    # Build selectbox options map
+    session_options = {}
+    if st.session_state.active_session_id == "temp_new_session":
+        session_options["New Chat"] = "temp_new_session"
     
-    # Filter sessions based on search query
-    if search_query:
-        filtered_sessions = [s for s in all_sessions if search_query.lower() in s["name"].lower()]
+    for s in all_sessions:
+        session_options[s["name"]] = s["id"]
+
+    if not session_options:
+        st.caption("No chats found.")
     else:
-        filtered_sessions = all_sessions
+        # Determine the selectbox index based on active_session_id
+        options_keys = list(session_options.keys())
+        try:
+            active_val = [k for k, v in session_options.items() if v == st.session_state.active_session_id][0]
+            active_idx = options_keys.index(active_val)
+        except (IndexError, ValueError):
+            active_idx = 0
 
-    if not all_sessions:
-        st.caption("No chats yet. Start typing below!")
-    elif not filtered_sessions:
-        st.caption("No matching chats found.")
-    else:
-        # Create option names list for selectbox
-        names_to_sessions = {}
-        for s in filtered_sessions:
-            name = s["name"]
-            if name in names_to_sessions:
-                name = f"{name} ({s['id'][:8]})"
-            names_to_sessions[name] = s
-
-        options = list(names_to_sessions.keys())
-
-        # Determine active index
-        active_id = st.session_state.active_session_id
-        active_index = 0
-        for i, opt in enumerate(options):
-            if names_to_sessions[opt]["id"] == active_id:
-                active_index = i
-                break
-
-        # Selectbox (matches model selector drop-down)
-        selected_option = st.selectbox(
-            "Select Chat",
-            options=options,
-            index=active_index,
-            key="session_select_dropdown",
-            label_visibility="collapsed"
+        selected_name = st.selectbox(
+            "Select Chat History",
+            options=options_keys,
+            index=active_idx,
+            label_visibility="collapsed",
+            key="chat_history_selectbox",
         )
 
-        selected_session = names_to_sessions[selected_option]
-        selected_id = selected_session["id"]
+        selected_id = session_options[selected_name]
 
-        # If user switches session:
-        # 1. Prune the current session if it is empty (0 messages) to save space/memory
-        # 2. Load the target session
-        if selected_id != active_id:
-            cleanup_empty_sessions(selected_id)
+        # Handle session loading on selection change
+        if selected_id != st.session_state.active_session_id:
             st.session_state.active_session_id = selected_id
+            st.session_state.active_options_id = None
             st.rerun()
 
-        # Manage current session details
-        with st.expander("⚙️ Manage Current Chat"):
-            new_name = st.text_input("Rename Title", value=selected_session["name"], key="rename_current")
-            col_save, col_del = st.columns(2)
-            with col_save:
-                if st.button("Save", use_container_width=True):
-                    if new_name.strip() and new_name.strip() != selected_session["name"]:
-                        rename_session(selected_id, new_name.strip())
+        # Under the selectbox, provide Rename/Delete controls (except for temp new session)
+        if selected_id != "temp_new_session":
+            col_ren, col_del = st.columns(2)
+            with col_ren:
+                if st.button("✏️ Rename", use_container_width=True):
+                    st.session_state.active_options_id = "rename"
                     st.rerun()
             with col_del:
-                if st.button("Delete", use_container_width=True, type="primary"):
-                    delete_session(selected_id)
-                    cleanup_empty_sessions()
-                    st.session_state.active_session_id = None
+                if st.button("🗑️ Delete", use_container_width=True):
+                    st.session_state.active_options_id = "delete"
                     st.rerun()
+
+            # Inline Rename Input
+            if st.session_state.active_options_id == "rename":
+                new_name = st.text_input(
+                    "Enter new name:",
+                    value=selected_name,
+                    key=f"rename_inp_{selected_id}",
+                )
+                col_save, col_cancel = st.columns(2)
+                with col_save:
+                    if st.button("Save", key=f"save_btn_{selected_id}", use_container_width=True):
+                        if new_name.strip() and new_name.strip() != selected_name:
+                            rename_session(selected_id, new_name.strip())
+                        st.session_state.active_options_id = None
+                        st.rerun()
+                with col_cancel:
+                    if st.button("Cancel", key=f"cancel_btn_{selected_id}", use_container_width=True):
+                        st.session_state.active_options_id = None
+                        st.rerun()
+
+            # Inline Delete Confirmation
+            elif st.session_state.active_options_id == "delete":
+                st.warning("Delete this chat?")
+                col_yes, col_no = st.columns(2)
+                with col_yes:
+                    if st.button("Yes, Delete", key=f"del_confirm_{selected_id}", use_container_width=True, type="primary"):
+                        delete_session(selected_id)
+                        st.session_state.active_session_id = "temp_new_session"
+                        st.session_state.active_options_id = None
+                        st.rerun()
+                with col_no:
+                    if st.button("No, Keep", key=f"del_cancel_{selected_id}", use_container_width=True):
+                        st.session_state.active_options_id = None
+                        st.rerun()
 
     st.divider()
 
@@ -261,10 +279,11 @@ with st.sidebar:
 
 
 # ------------------------------------------------------------------
-# Ensure an active session exists (in memory only)
+# Ensure an active session exists
 # ------------------------------------------------------------------
-if st.session_state.active_session_id is None:
-    st.session_state.active_session_id = str(uuid.uuid4())
+if st.session_state.active_session_id is None or \
+   (st.session_state.active_session_id != "temp_new_session" and not session_exists(st.session_state.active_session_id)):
+    st.session_state.active_session_id = "temp_new_session"
 
 active_session_id = st.session_state.active_session_id
 
@@ -278,8 +297,11 @@ st.caption(
 )
 st.divider()
 
-# Load messages for the active session from the database
-messages = get_messages(active_session_id)
+# Load messages for the active session (bypass DB query for new unsaved sessions)
+if active_session_id == "temp_new_session":
+    messages = []
+else:
+    messages = get_messages(active_session_id)
 
 # Display all messages in the active session
 for msg in messages:
@@ -305,9 +327,10 @@ if prompt := st.chat_input("Ask a question about your documents..."):
         st.error(str(exc))
         st.stop()
 
-    # Lazily create the session in the database only when the first message is sent
-    if not session_exists(active_session_id):
-        create_session_with_id(active_session_id, selected_model)
+    # Lazy-create the session in DB only when the first message is sent
+    if active_session_id == "temp_new_session":
+        active_session_id = create_session(selected_model)
+        st.session_state.active_session_id = active_session_id
 
     # Persist and display user message
     add_message(active_session_id, "user", prompt)
