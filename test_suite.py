@@ -42,39 +42,39 @@ RESULTS_FILE    = BASE_DIR / "test_results.txt"
 TEST_CASES = [
     # --- IN-CONTEXT: Should answer from documents ---
     (
-        "What is the warranty period for the SmartHome Hub?",
-        "3 year",
+        "Who is Ferdaws Qaem?",
+        "Ferdaws",
         "IN-CONTEXT",
     ),
     (
-        "How do I reset the SmartHome Hub to factory settings?",
-        "reset",
+        "What university does Ferdaws attend?",
+        "Kültür",
         "IN-CONTEXT",
     ),
     (
-        "What are the Wi-Fi requirements for the SmartHome Hub?",
-        "wi-fi",
+        "What is Ferdaws's student ID?",
+        "2300001530",
         "IN-CONTEXT",
     ),
     (
-        "How do I connect my SmartHome Hub to a new router?",
-        "router",
+        "What languages does Ferdaws speak?",
+        "English",
         "IN-CONTEXT",
     ),
     (
-        "What should I do if my hub is not connecting to the internet?",
-        "connect",
+        "What was Ferdaws's grade for Programming I?",
+        "B",
         "IN-CONTEXT",
     ),
     (
-        "What is the return policy?",
-        "return",
+        "Has Ferdaws completed an Erasmus program?",
+        "Ostrava",
         "IN-CONTEXT",
     ),
 
     # --- OUT-OF-CONTEXT: Should return the fallback message ---
     (
-        "What is the capital of France?",
+        "What is the warranty period for the SmartHome Hub?",
         "don't have that information",
         "OUT-OF-CONTEXT",
     ),
@@ -142,7 +142,7 @@ def run_tests(embedding_client, chat_client) -> list[dict]:
             question=query,
             embedding_client=embedding_client,
             chat_client=chat_client,
-            top_k=5,
+            top_k=3,
         )
         elapsed = time.time() - start
         answer  = result["answer"]
@@ -222,6 +222,10 @@ def print_summary(results: list[dict]) -> str:
 # Entry Point
 # ------------------------------------------------------------------
 def main():
+    try:
+        sys.stdout.reconfigure(encoding='utf-8')
+    except Exception:
+        pass
     print("=" * 60)
     print("  SmartHome Hub — Automated Test Suite (Week 5)")
     print("=" * 60)

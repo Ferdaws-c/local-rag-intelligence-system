@@ -234,39 +234,3 @@ def delete_session(session_id: str) -> None:
     conn.execute("DELETE FROM chat_sessions WHERE id = ?", (session_id,))
     conn.commit()
     conn.close()
-
-
-def cleanup_empty_sessions(active_session_id: str | None = None) -> None:
-    """
-    Permanently deletes any chat sessions that contain no messages.
-    Preserves the currently active session to allow user input.
-    """
-    conn = sqlite3.connect(HISTORY_DB)
-    if active_session_id:
-        conn.execute("""
-            DELETE FROM chat_sessions
-            WHERE id NOT IN (SELECT DISTINCT session_id FROM chat_messages)
-              AND id != ?
-        """, (active_session_id,))
-    else:
-        conn.execute("""
-            DELETE FROM chat_sessions
-            WHERE id NOT IN (SELECT DISTINCT session_id FROM chat_messages)
-        """)
-    conn.commit()
-    conn.close()
-
-
-def create_session_with_id(session_id: str, model_name: str) -> None:
-    """
-    Creates a new chat session in the database using a pre-generated UUID.
-    This enables lazy instantiation of chat sessions in the database.
-    """
-    now = datetime.now().isoformat()
-    conn = sqlite3.connect(HISTORY_DB)
-    conn.execute("""
-        INSERT INTO chat_sessions (id, name, model, created_at, updated_at)
-        VALUES (?, 'New Chat', ?, ?, ?)
-    """, (session_id, model_name, now, now))
-    conn.commit()
-    conn.close()

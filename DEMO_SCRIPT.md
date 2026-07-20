@@ -1,5 +1,5 @@
 # 🎬 Demo Video Script
-## SmartHome Hub v2.0 — Local RAG Assistant
+## Ferdaws Qaem — Local RAG Assistant
 ### Final Presentation Guide
 
 ---
@@ -12,9 +12,9 @@
 
 **[Screen: Show the GitHub repository page]**
 
-> "Hi, my name is [YOUR NAME], and this is my final project for the Local AI with Microsoft Foundry Local summer school program.
+> "Hi, my name is Ferdaws Qaem, and this is my final project for the Local AI with Microsoft Foundry Local summer school program.
 >
-> I built a fully offline AI-powered Q&A assistant for a fictional product called the SmartHome Hub v2.0.
+> I built a fully offline AI-powered Q&A assistant for my academic and professional profile.
 > What makes this project special is that **everything runs on my local machine** — no cloud services, no API keys, no internet connection needed for the AI part.
 > The entire AI pipeline — from understanding your question to generating an answer — happens right here on this computer."
 
@@ -26,9 +26,9 @@
 
 > "So what problem does this solve?
 >
-> Imagine you're a customer support team for a hardware product. You have 5 documents — a FAQ, a Setup Guide, Technical Specifications, a Warranty policy, and a Troubleshooting guide.
+> Imagine you're a recruiter or hiring manager reviewing my profile. I have 5 documents — my profile overview, official transcript, work experience, projects, and Microsoft AI Innovators details.
 >
-> Without AI, your customers have to search through all of these manually.
+> Without AI, you'd have to search through all of these manually to find specific details about my background.
 > With this assistant, they just **ask a question in plain English** and get a precise, cited answer in seconds — all running privately on their own device.
 >
 > This is what's called **Retrieval-Augmented Generation**, or RAG."
@@ -58,24 +58,24 @@
 > "Let me show you the actual application."
 
 ### Demo Query 1 — In-context question ✅
-**[Type in the chat box:]** `What is the warranty period for my SmartHome Hub?`
+**[Type in the chat box:]** `What is Ferdaws's student ID?`
 
-> "I'll ask about the warranty period. Watch how it streams the answer word by word in real time, and notice the 'Sources Retrieved' panel at the bottom — it tells us exactly which document the answer came from and how confident the retrieval was."
+> "I'll ask about my student ID. Watch how it streams the answer word by word in real time, and notice the 'Sources Retrieved' panel at the bottom — it tells us exactly which document the answer came from and how confident the retrieval was."
 
 **[Wait for answer, then point to sources panel]**
 
-> "You can see it pulled from `warranty.txt` with a high similarity score, and it correctly cited the document in its answer."
+> "You can see it pulled from `official_transcript.txt` with a high similarity score, and it correctly cited the document in its answer."
 
 ---
 
-### Demo Query 2 — Troubleshooting question ✅
-**[Type:]** `My SmartHome Hub is not connecting to the internet, what should I do?`
+### Demo Query 2 — Professional question ✅
+**[Type:]** `Has Ferdaws completed an Erasmus program?`
 
-> "Now let me ask a troubleshooting question."
+> "Now let me ask a question about my academic experience."
 
 **[Wait for answer]**
 
-> "It pulled from `troubleshooting.txt` and gave step-by-step guidance — again, only from the actual document."
+> "It pulled from `official_transcript.txt` and gave a clear answer — again, only from the actual documents."
 
 ---
 
@@ -95,7 +95,7 @@
 
 > "One more feature I'm proud of — the sidebar lets you switch between three different AI models. This Fast model is only 0.5 billion parameters — watch how quickly it responds."
 
-**[Type:]** `How do I reset my SmartHome Hub?`
+**[Type:]** `What university does Ferdaws attend?`
 
 > "About 1-2 seconds. The tradeoff is answer quality. The Balanced model takes longer but gives more nuanced responses. This lets users choose based on their hardware and patience."
 

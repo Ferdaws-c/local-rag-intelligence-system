@@ -1,0 +1,24 @@
+PROJECT SPECIFICATION & PROGRAM MILESTONE
+MICROSOFT AI INNOVATORS COMMUNITY — LOCAL RAG IMPLEMENTATION
+
+1. PROGRAM SELECTION & LEADERSHIP
+- Program / Community: Microsoft AI Innovators (1,000+ member elite developer community).
+- Program Lead & Sponsor: Barbaros Günay.
+- Opportunity Summary: Selected to participate in the Microsoft AI Innovators initiative to build advanced, privacy-focused, and edge-ready artificial intelligence solutions.
+
+2. ASSIGNED TASK & OBJECTIVE
+- Official Project Title: "Building Your First Local RAG Application with Foundry Local"
+- Core Objective: Engineer, deploy, and benchmark a fully functional, privacy-preserving Retrieval-Augmented Generation (RAG) system running completely locally on-device via Microsoft Foundry Local architecture.
+
+3. ARCHITECTURAL & FUNCTIONAL SCOPE
+- Local Inference & Vector Engine: Implement document chunking, embeddings, and vector indexing using Foundry Local, avoiding external API dependencies for enhanced security and minimal latency.
+- Multi-Document Stress Testing: Benchmarking retrieval accuracy, context retention, and zero-hallucination response generation across diverse technical document types:
+  * faq.txt (Fact lookup & conditional state responses)
+  * setup_guide.txt (Sequential execution & safety warnings)
+  * specifications.txt (Exact numerical metrics & technical limits)
+  * troubleshooting.txt (Multi-branch error diagnostics & code maps)
+  * warranty.txt (Policy logic, date parameters, and conditional rules)
+
+4. PERFORMANCE & EVALUATION METRICS
+- Local Latency & Throughput: Measure local embedding generation time, vector retrieval speed, and token generation rates on host hardware.
+- Precision & Recall: Evaluate retrieval correctness using standard framework benchmarks (e.g., RAGAS standards, synthetic test sets) to ensure high-fidelity context grounding before passing prompts to the local LLM.

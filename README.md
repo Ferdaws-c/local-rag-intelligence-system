@@ -1,6 +1,6 @@
-# 🏠 SmartHome Hub v2.0 — Local RAG Assistant
+# 🎓 Ferdaws Qaem — Local RAG Assistant
 
-A fully offline AI-powered Q&A assistant for the SmartHome Hub v2.0, built using **Retrieval-Augmented Generation (RAG)** and **Microsoft Foundry Local**. All AI inference runs entirely on your local machine — no cloud, no API keys, no internet required.
+A fully offline AI-powered Q&A assistant for Ferdaws Qaem's Academic and Professional Profile, built using **Retrieval-Augmented Generation (RAG)** and **Microsoft Foundry Local**. All AI inference runs entirely on your local machine — no cloud, no API keys, no internet required.
 
 ---
 
@@ -26,7 +26,7 @@ This project is the final deliverable for the **Local AI with Microsoft Foundry 
 - **Cosine similarity** for semantic document retrieval
 - **Streamlit** for a clean, interactive web UI
 
-The assistant can answer questions about the SmartHome Hub v2.0 by searching through a local knowledge base of five documents and grounding every answer in real retrieved text.
+The assistant can answer questions about Ferdaws Qaem's academic background, work experience, and technical skills by searching through a local knowledge base of 5 profile documents and grounding every answer in real retrieved text.
 
 ---
 
@@ -73,11 +73,11 @@ final_project/
 ├── .gitignore              # Git exclusions
 │
 ├── source_documents/       # Raw knowledge base (.txt files)
-│   ├── faq.txt
-│   ├── setup_guide.txt
-│   ├── specifications.txt
-│   ├── troubleshooting.txt
-│   └── warranty.txt
+│   ├── profile_overview.txt
+│   ├── official_transcript.txt
+│   ├── academic_and_experience.txt
+│   ├── projects_and_technical.txt
+│   └── microsoft_ai_innovators_rag_project.txt
 │
 └── .streamlit/             # Streamlit configuration
 ```
@@ -95,8 +95,8 @@ final_project/
 
 ### 1. Clone the repository
 ```bash
-git clone https://github.com/YOUR_USERNAME/smarthome-hub-assistant.git
-cd smarthome-hub-assistant/final_project
+git clone https://github.com/Ferdaws-c/local-rag-intelligence-system.git
+cd local-rag-intelligence-system/final_project
 ```
 
 ### 2. Install dependencies

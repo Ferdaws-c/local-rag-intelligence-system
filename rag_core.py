@@ -79,46 +79,55 @@ def get_top_chunks(query: str,
         scored.append({"id": row_id, "filename": filename,
                         "content": content, "score": score})
 
-    # Return highest-scoring chunks
+    # Return highest-scoring chunks above the minimum relevance threshold
+    MIN_SCORE_THRESHOLD = 0.36  # Reject chunks below 36% cosine similarity
     scored.sort(key=lambda x: x["score"], reverse=True)
-    return scored[:top_k]
+    top = [c for c in scored[:top_k] if c["score"] >= MIN_SCORE_THRESHOLD]
+    return top
 
 
 # ------------------------------------------------------------------
-# Answer Generation
+# Fast Query Expansion (zero LLM cost — pure Python synonym map)
 # ------------------------------------------------------------------
-def expand_query(query: str, chat_client) -> str:
+_SYNONYM_MAP: dict[str, str] = {
+    # Finance / legal
+    "guarantee": "warranty", "guaranty": "warranty", "refund": "warranty return",
+    "price": "cost fee pricing", "prices": "cost fee pricing",
+    # Hardware
+    "wires": "cables wiring", "wire": "cable", "plug": "connector port",
+    "screen": "display monitor", "keyboard": "input device",
+    # Network
+    "net": "network wifi", "internet": "network wifi connectivity",
+    "wi-fi": "wifi wireless network", "hotspot": "wifi network",
+    # Education / personal
+    "school": "education university college degree",
+    "job": "occupation career profession employment",
+    "work": "occupation career employment",
+    "major": "department faculty degree program",
+    "class": "course lecture study",
+    # General
+    "fix": "repair troubleshoot", "broken": "malfunction error fault",
+    "slow": "performance latency speed", "fast": "speed performance",
+    "setup": "installation configuration", "install": "installation setup",
+    "password": "credentials authentication login",
+    "reset": "restore factory default",
+}
+
+def expand_query(query: str, chat_client=None, chat_history: list = None) -> str:
     """
-    Rewrites the user's natural language question into optimized search keywords
-    to bridge semantic gaps (e.g. converting 'guarantee' to 'warranty').
+    Expands the query using a zero-cost Python synonym map.
+    No LLM call needed — dramatically reduces latency.
     """
-    system_prompt = (
-        "You are a search query optimizer.\n"
-        "Convert the user's question into 3 to 5 search keywords or synonyms "
-        "relevant to finding information in a technical product manual.\n"
-        "CRITICAL: Map colloquial or informal terms to standard technical terms. "
-        "For example, convert 'guarantee' or 'refund' to 'warranty', 'wires' to 'cables', 'net' to 'wifi network'.\n"
-        "Output ONLY the optimized keywords separated by spaces. Do not write full sentences, notes, or explanations."
-    )
-    messages = [
-        {"role": "system", "content": system_prompt},
-        {"role": "user",   "content": query}
-    ]
-    
-    keywords = []
-    token_count = 0
-    # Strict low token limit for speed
-    for chunk in chat_client.complete_streaming_chat(messages):
-        if chunk.choices:
-            content = chunk.choices[0].delta.content
-            if content:
-                keywords.append(content)
-                token_count += 1
-                if token_count >= 15:
-                    break
-    
-    expanded = "".join(keywords).strip()
-    return expanded if expanded else query
+    words = query.lower().split()
+    extra: list[str] = []
+    for word in words:
+        # Strip trailing punctuation for matching
+        clean = word.strip("?.,!;:")
+        if clean in _SYNONYM_MAP:
+            extra.append(_SYNONYM_MAP[clean])
+    if extra:
+        return f"{query} {' '.join(extra)}"
+    return query
 
 
 # ------------------------------------------------------------------
@@ -127,8 +136,9 @@ def expand_query(query: str, chat_client) -> str:
 def answer_query(question: str,
                  embedding_client,
                  chat_client,
-                 top_k: int = 5,
-                 stream_callback=None) -> dict:
+                 top_k: int = 3,
+                 stream_callback=None,
+                 chat_history: list = None) -> dict:
     """
     Full RAG pipeline: Retrieve → Augment → Generate.
 
@@ -146,6 +156,7 @@ def answer_query(question: str,
         stream_callback  : Optional callable(str) invoked with the accumulated
                            response text after each token — use this to update
                            a UI in real-time.
+        chat_history     : Optional list of previous chat messages for context.
 
     Returns:
         {
@@ -153,37 +164,55 @@ def answer_query(question: str,
             "sources" : list[dict], # Retrieved chunks used as context
         }
     """
-    # A — Expand query to resolve synonyms (e.g. guarantee -> warranty)
-    expanded_query = expand_query(question, chat_client)
-    
+    # A — Expand query using zero-cost synonym map (no LLM call)
+    expanded_query = expand_query(question)
+
     # B — Retrieve relevant document chunks using the expanded query
     chunks = get_top_chunks(expanded_query, embedding_client, top_k=top_k)
 
-    # B — Build grounded system prompt
-    # Each chunk is prefixed with its source file name for citation
+    if not chunks:
+        return {
+            "answer":  "I don't have that information in the knowledge base.",
+            "sources": [],
+        }
+
+    # C — Build grounded system prompt
+    # Each chunk is prefixed with its source file name; content trimmed to keep prompt short
+    MAX_CHUNK_CHARS = 600
     context_lines = []
     for chunk in chunks:
-        source = chunk["filename"].replace(".txt", "").replace("_", " ").title()
-        context_lines.append(f"[Source: {source}]\n{chunk['content']}")
+        source  = chunk["filename"].replace(".txt", "").replace("_", " ").title()
+        content = chunk["content"][:MAX_CHUNK_CHARS]
+        context_lines.append(f"[Source: {source}]\n{content}")
     context_text = "\n\n".join(context_lines)
 
     system_prompt = (
-        "You are an intelligent document retrieval assistant.\n\n"
-        "STRICT INSTRUCTIONS:\n"
-        "1. Answer the user's question using ONLY the exact information provided "
-        "in the Context section below. Do not use any outside knowledge.\n"
+        "You are a strict document-grounded assistant. Your ONLY job is to report "
+        "what the provided Context documents say — nothing more.\n\n"
+        "ABSOLUTE RULES — violating any of these is a critical failure:\n"
+        "1. Use ONLY the exact facts stated in the Context below. "
+        "   NEVER add, infer, guess, or use any knowledge from your training data.\n"
         "2. If the Context does not contain the answer, respond with EXACTLY: "
-        "\"I don't have that information.\"\n"
-        "3. Always cite which source document your answer comes from "
-        "(e.g., 'According to the Warranty policy...').\n"
-        "4. Keep your answer concise — no more than 3 sentences.\n\n"
+        "   \"I don't have that information.\"\n"
+        "3. If the Context contains PARTIAL information, report only what it says "
+        "   and say \"The documents don't specify\" for the missing parts.\n"
+        "4. Always cite the source document name for every fact you state "
+        "   (e.g., 'According to [Source Name]...').\n"
+        "5. Keep your answer concise — no more than 4 sentences.\n"
+        "6. Treat every word in the Context as ground truth. "
+        "   Do NOT substitute, correct, or paraphrase with your own knowledge.\n"
+        "7. For bilingual documents containing both Turkish and English (e.g., 'BİLGİSAYAR MÜHENDİSLİĞİ (İNGİLİZCE) (ÜCRETLİ)' and '(Computer Engineering - English, Paid)'), always use the English parenthesized translation exactly. Do NOT translate Turkish terms yourself or substitute them with different terms from your pretraining (e.g. do not turn 'Computer Engineering' / 'Paid' into 'Electrical Engineering' / 'Ücretsiz').\n\n"
         f"Context:\n{context_text}"
     )
 
-    messages = [
-        {"role": "system", "content": system_prompt},
-        {"role": "user",   "content": question},
-    ]
+    messages = [{"role": "system", "content": system_prompt}]
+    
+    if chat_history:
+        # Append the last few messages for conversational memory
+        for msg in chat_history[-6:]:
+            messages.append({"role": msg["role"], "content": msg["content"]})
+            
+    messages.append({"role": "user", "content": question})
 
     # C — Stream the response with a hard token cap to prevent runaway generation
     response_parts = []

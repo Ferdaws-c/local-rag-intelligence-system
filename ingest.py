@@ -1,7 +1,7 @@
 """
 ingest.py — Knowledge Base Ingestion Pipeline
 ================================================
-Reads all .txt files from source_documents/, splits them into
+Reads .txt, .pdf, and .docx files from source_documents/, splits them into
 paragraph-level chunks, generates vector embeddings using
 qwen3-embedding-0.6b, and stores them in SQLite (knowledge_base.db).
 
@@ -14,6 +14,7 @@ Usage:
 
 import json
 import sqlite3
+import time
 from pathlib import Path
 
 from sdk_utils import init_sdk, load_model
@@ -21,10 +22,53 @@ from sdk_utils import init_sdk, load_model
 # ------------------------------------------------------------------
 # Configuration — all paths relative to this file's location
 # ------------------------------------------------------------------
-BASE_DIR      = Path(__file__).parent
-DOCUMENTS_DIR = BASE_DIR / "source_documents"
-DB_FILE       = BASE_DIR / "knowledge_base.db"
+BASE_DIR        = Path(__file__).parent
+DOCUMENTS_DIR   = BASE_DIR / "source_documents"
+DB_FILE         = BASE_DIR / "knowledge_base.db"
 EMBEDDING_MODEL = "qwen3-embedding-0.6b"
+
+SUPPORTED_EXTENSIONS = {".txt", ".pdf", ".docx"}
+
+
+# ------------------------------------------------------------------
+# Document Readers
+# ------------------------------------------------------------------
+def read_txt(filepath: Path) -> str:
+    return filepath.read_text(encoding="utf-8")
+
+
+def read_pdf(filepath: Path) -> str:
+    try:
+        import pypdf
+        reader = pypdf.PdfReader(str(filepath))
+        pages  = [page.extract_text() or "" for page in reader.pages]
+        return "\n\n".join(p.strip() for p in pages if p.strip())
+    except Exception as e:
+        print(f"  WARNING: Could not read PDF {filepath.name}: {e}")
+        return ""
+
+
+def read_docx(filepath: Path) -> str:
+    try:
+        import docx
+        doc        = docx.Document(str(filepath))
+        paragraphs = [p.text.strip() for p in doc.paragraphs if p.text.strip()]
+        return "\n\n".join(paragraphs)
+    except Exception as e:
+        print(f"  WARNING: Could not read DOCX {filepath.name}: {e}")
+        return ""
+
+
+def read_document(filepath: Path) -> str:
+    """Dispatch to the correct reader based on file extension."""
+    ext = filepath.suffix.lower()
+    if ext == ".txt":
+        return read_txt(filepath)
+    elif ext == ".pdf":
+        return read_pdf(filepath)
+    elif ext == ".docx":
+        return read_docx(filepath)
+    return ""
 
 
 # ------------------------------------------------------------------
@@ -32,13 +76,11 @@ EMBEDDING_MODEL = "qwen3-embedding-0.6b"
 # ------------------------------------------------------------------
 def init_database(conn: sqlite3.Connection) -> None:
     """
-    Drops and recreates the documents table for a clean rebuild.
-    This ensures no stale data remains when documents are updated.
+    Creates the documents table if it doesn't exist.
     """
     cursor = conn.cursor()
-    cursor.execute("DROP TABLE IF EXISTS documents")
     cursor.execute("""
-        CREATE TABLE documents (
+        CREATE TABLE IF NOT EXISTS documents (
             id         INTEGER PRIMARY KEY AUTOINCREMENT,
             filename   TEXT NOT NULL,
             content    TEXT NOT NULL,
@@ -48,32 +90,92 @@ def init_database(conn: sqlite3.Connection) -> None:
     """)
     conn.commit()
 
+def remove_document_from_db(conn: sqlite3.Connection, filename: str) -> None:
+    """Deletes all chunks belonging to a specific file and completely wipes traces from disk."""
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM documents WHERE filename = ?", (filename,))
+    conn.commit()
+    # Vacuum reclaims the freed space and completely erases deleted data from the SQLite file
+    cursor.execute("VACUUM")
+    conn.commit()
+
+def rename_document(old_name: str, new_name: str) -> dict:
+    """Instantly updates a document's filename in the database without re-embedding."""
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        cursor = conn.cursor()
+        cursor.execute("UPDATE documents SET filename = ? WHERE filename = ?", (new_name, old_name))
+        conn.commit()
+        
+        cursor.execute("SELECT COUNT(*) FROM documents")
+        total_in_db = cursor.fetchone()[0]
+        conn.close()
+        return {"status": "ok", "total": total_in_db}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
 
 # ------------------------------------------------------------------
 # Chunking Logic
 # ------------------------------------------------------------------
-def load_and_chunk_documents(documents_dir: Path) -> list[dict]:
+def load_and_chunk_documents(documents_dir: Path, target_filename: str = None) -> list[dict]:
     """
-    Reads every .txt file in documents_dir and splits each file
-    on double-newline boundaries to produce paragraph chunks.
+    Reads files in documents_dir and splits them into overlapping line-window chunks.
+    Each chunk is ~15 lines with a 5-line overlap so no single-line fields (like
+    formatted transcripts or student records) are ever isolated or lost.
+    If target_filename is provided, it only reads that specific file.
+    """
+    CHUNK_LINES   = 15   # lines per chunk
+    OVERLAP_LINES = 5    # lines shared between consecutive chunks
 
-    Returns:
-        List of dicts: [{"filename": str, "content": str}, ...]
-    """
     all_chunks = []
-    txt_files  = sorted(documents_dir.glob("*.txt"))
 
-    if not txt_files:
-        raise FileNotFoundError(f"No .txt files found in: {documents_dir}")
+    if target_filename:
+        all_files = [documents_dir / target_filename]
+        if not all_files[0].exists():
+            raise FileNotFoundError(f"Target file not found: {all_files[0]}")
+    else:
+        all_files = sorted(
+            f for f in documents_dir.iterdir()
+            if f.is_file() and f.suffix.lower() in SUPPORTED_EXTENSIONS
+        )
 
-    for filepath in txt_files:
-        raw_text   = filepath.read_text(encoding="utf-8")
-        raw_chunks = raw_text.split("\n\n")
-        valid_chunks = [c.strip() for c in raw_chunks if c.strip()]
+    if not all_files:
+        raise FileNotFoundError(
+            f"No supported files (.txt, .pdf, .docx) found in: {documents_dir}"
+        )
 
-        print(f"  {filepath.name}: {len(valid_chunks)} chunks")
-        for chunk in valid_chunks:
-            all_chunks.append({"filename": filepath.name, "content": chunk})
+    for filepath in all_files:
+        raw_text = read_document(filepath)
+        if not raw_text:
+            continue
+
+        lines = [l for l in raw_text.splitlines()]  # keep ALL lines, even blank ones for spacing
+        non_empty_lines = [l.strip() for l in lines if l.strip()]
+
+        if not non_empty_lines:
+            continue
+
+        # Use the first non-empty line as the document title prefix
+        title = non_empty_lines[0]
+
+        # Sliding window over non-empty lines
+        step   = max(1, CHUNK_LINES - OVERLAP_LINES)
+        chunks_for_file = []
+        i = 0
+        while i < len(non_empty_lines):
+            window = non_empty_lines[i : i + CHUNK_LINES]
+            chunk_text = "\n".join(window)
+            # Prefix every chunk with the document title for better embedding context
+            if window[0] != title:
+                content_to_embed = f"{title}\n\n{chunk_text}"
+            else:
+                content_to_embed = chunk_text
+            chunks_for_file.append({"filename": filepath.name, "content": content_to_embed})
+            i += step
+
+        print(f"  {filepath.name}: {len(chunks_for_file)} chunks (sliding window)")
+        all_chunks.extend(chunks_for_file)
 
     return all_chunks
 
@@ -142,7 +244,120 @@ def print_report(conn: sqlite3.Connection) -> None:
 
 
 # ------------------------------------------------------------------
-# Entry Point
+# Callable API (used by app.py for in-app re-ingestion)
+# ------------------------------------------------------------------
+def clear_knowledge_base(progress_callback=None) -> dict:
+    """
+    Completely wipes all documents and embeddings from the knowledge base.
+    Runs VACUUM afterward to physically erase all data from the SQLite file.
+
+    Parameters:
+        progress_callback : Optional callable(pct: float, label: str).
+    """
+    def _report(pct: float, label: str):
+        if progress_callback:
+            try:
+                progress_callback(pct, label)
+            except Exception:
+                pass
+
+    try:
+        _report(0.0, "Connecting to database…")
+        time.sleep(0.4)
+
+        conn = sqlite3.connect(DB_FILE)
+        cursor = conn.cursor()
+
+        _report(0.2, "Counting existing chunks…")
+        time.sleep(0.4)
+        cursor.execute("SELECT COUNT(*) FROM documents")
+        total_before = cursor.fetchone()[0]
+
+        _report(0.45, f"Deleting {total_before} chunks…")
+        time.sleep(0.5)
+        cursor.execute("DELETE FROM documents")
+        conn.commit()
+
+        _report(0.70, "Running VACUUM to erase all traces…")
+        time.sleep(0.5)
+        cursor.execute("VACUUM")
+        conn.commit()
+        conn.close()
+
+        _report(1.0, "Knowledge base cleared!")
+        return {"status": "ok", "deleted": total_before}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+
+def run_ingestion(embedding_client, progress_callback=None, target_file=None, is_delete=False) -> dict:
+    """
+    Programmatic entry point for triggering ingestion from the Streamlit app.
+    
+    Parameters:
+        embedding_client  : Active Foundry Local embedding client.
+        progress_callback : Optional callable(pct: float, label: str).
+        target_file       : If set, only this file is processed (incremental).
+        is_delete         : If True, target_file is removed from DB without embedding.
+    """
+    def _report(pct: float, label: str):
+        if progress_callback:
+            try:
+                progress_callback(pct, label)
+            except Exception:
+                pass
+
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        init_database(conn)
+
+        if is_delete and target_file:
+            _report(0.5, f"Deleting {target_file} from database…")
+            time.sleep(1.0) # Ensure the progress bar flashes in the UI before finishing
+            remove_document_from_db(conn, target_file)
+            
+            cursor = conn.cursor()
+            cursor.execute("SELECT COUNT(*) FROM documents")
+            total_in_db = cursor.fetchone()[0]
+            conn.close()
+            
+            _report(1.0, "Done!")
+            return {"status": "ok", "total": total_in_db, "files": []}
+
+        # For full rebuilds, clear everything first
+        if not target_file:
+            _report(0.0, "Clearing old database…")
+            conn.cursor().execute("DROP TABLE IF EXISTS documents")
+            init_database(conn)
+
+        _report(0.05, "Reading & chunking documents…")
+        chunks = load_and_chunk_documents(DOCUMENTS_DIR, target_filename=target_file)
+
+        _report(0.30, f"Generating embeddings for {len(chunks)} chunks…")
+        chunks = generate_embeddings(chunks, embedding_client)
+
+        _report(0.88, "Writing to database…")
+        # If updating a single file, clear its old chunks first
+        if target_file:
+            remove_document_from_db(conn, target_file)
+            
+        insert_chunks(conn, chunks)
+        
+        # Get total chunks currently in DB for reporting
+        cursor = conn.cursor()
+        cursor.execute("SELECT COUNT(*) FROM documents")
+        total_in_db = cursor.fetchone()[0]
+        conn.close()
+
+        _report(1.0, "Done!")
+        return {"status": "ok", "total": total_in_db, "files": []}
+
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+
+# ------------------------------------------------------------------
+# Entry Point (CLI usage)
 # ------------------------------------------------------------------
 def main():
     print("=" * 50)
@@ -168,6 +383,8 @@ def main():
     print(f"\n[4/4] Writing to database...")
     conn = sqlite3.connect(DB_FILE)
     try:
+        # Explicitly drop for CLI full rebuild
+        conn.cursor().execute("DROP TABLE IF EXISTS documents")
         init_database(conn)
         insert_chunks(conn, chunks)
         print_report(conn)

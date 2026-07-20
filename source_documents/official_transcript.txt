@@ -1,0 +1,104 @@
+================================================================================
+T.C. İSTANBUL KÜLTÜR ÜNİVERSİTESİ
+ÖĞRENCİ İŞLERİ DAİRE BAŞKANLIĞI - ÖĞRENCİ TRANSKRİPTİ
+================================================================================
+
+STUDENT INFORMATION
+--------------------------------------------------------------------------------
+Name / Ad Soyad           : FERDAWS QAEM
+Student ID / Öğrenci No   : 2300001530
+Faculty / Fakülte         : MÜHENDİSLİK FAKÜLTESİ (Faculty of Engineering)
+Department / Bölüm        : BİLGİSAYAR MÜHENDİSLİĞİ (İNGİLİZCE) (ÜCRETLİ)
+                            (Computer Engineering - English, Paid)
+Registration Date         : 24.08.2023
+Academic System           : AKTS / ECTS
+Document Issue Date       : 20.07.2026
+Document ID / Sayı        : 38515353/
+English Prep Status       : 2023-2024 Academic Year Successful (Grade: 70/100)
+
+ACADEMIC RECORD
+--------------------------------------------------------------------------------
+
+[SEMESTER 1 / 1. DÖNEM]
+Course Code  Course Name                                        Grade  ECTS  Credits
+ATA1001      Principles of Atatürk & History of Reforms I       C      2     2
+CSE1001      Programming I                                      B      8     3
+CSE1003      Introduction to Computer Engineering               A      5     3
+CSE1101      Academic English for Computer Engineering I        C+     3     3
+MCB1001      Calculus I                                         D      7     4
+PHY1001      Physics I                                          B      7     3
+TR1001       Turkish I                                          A      2     2
+
+[SEMESTER 2 / 2. DÖNEM]
+Course Code  Course Name                                        Grade  ECTS  Credits
+ATA2001      Principles of Atatürk and History of Reforms II    C+     2     2
+CPC0001      Career Planning                                    Y      0     2
+CSE2002      Programming II                                     B+     8     3
+CSE2094      Chemistry                                          B-     5     3
+CSE2102      Academic English for Computer Engineering II       B      3     3
+MCB1002      Calculus II                                        C-     7     4
+PHY2001      Physics II                                         B+     7     3
+TR2001       Turkish II                                         A      2     2
+
+[SEMESTER 3 / 3. DÖNEM]
+Course Code  Course Name                                        Grade  ECTS  Credits
+COM3003      Object Oriented Programming                        B      7     3
+COM3013      Discrete Structures                                C      7     3
+COM3021      Digital Design                                     B-     6     3
+COM3209      Academic Writing and Presentation Skills           C+     4     3
+MCB1004      Linear Algebra                                     A-     6     3
+
+[SEMESTER 4 / 4. DÖNEM]
+Course Code  Course Name                                        Grade  ECTS  Credits
+COM4004      Data Structures and Algorithms                     B      7     3
+COM4023      Computer Organization                              B+     6     3
+COM4024      Microprocessors                                    B-     6     3
+COM4050      Signals and Systems                                B-     6     3
+COM4061      Systems Analysis and Design                        C      6     3
+
+[SEMESTER 5 / 5. DÖNEM]
+Course Code  Course Name                                        Grade  ECTS  Credits
+MCB1007      Introduction to Probability and Statistics (1)     A      6     3
+
+
+[SEMESTER 6 / 6. DÖNEM]
+Course Code  Course Name                                        Grade  ECTS  Credits
+COM6032      Computer Networks                                  B-     6     3
+COM6064      Software Engineering                               A      6     3
+MCB1008      Numerical Methods                                  C+     6     3
+
+[ELECTIVE COURSES / SEÇMELİ DERSLER]
+Course Code  Course Name                                        Grade  ECTS  Credits
+CEU0001      Earthquake Awareness                               B+     2     2
+COM0413      Machine Learning                                   A      6     3
+COM0454      Embedded Systems (2)                               A      6     3
+COM0455      Advanced Digital Systems (3)                       A      6     3
+COM0463      IT Project Management                              A      6     3
+SEN0412      Mobile Programming I                               A      6     3
+---          Modern Physics for Everyone                        A      2     2
+
+ACADEMIC SUMMARY & EXCHANGE NOTES
+--------------------------------------------------------------------------------
+Total ECTS / Toplam AKTS : 187
+GPA / GNO                : 3.04
+
+Exchange Program Note:
+- 2025-2026 Academic Year Fall Semester: Attended VŠB - Technical University of
+  Ostrava (Ostrava Politeknik Üniversitesi) as an Erasmus Exchange Student.
+
+IKÜ Course Equivalencies for Erasmus Modules (Footnote Mapping):
+  1. 470-4405 Probability and Statistics -> MCB1007 Introduction to Probability and Statistics
+  2. 450-2092 Embedded Systems            -> COM0454 Embedded Systems
+  3. 440-2104 Introduction to Digital Systems -> COM0455 Advanced Digital Systems
+
+GRADING SYSTEM REGULATION
+--------------------------------------------------------------------------------
+Grade Coefficients:
+A  = 4.0 | A- = 3.7 | B+ = 3.3 | B  = 3.0 | B- = 2.7
+C+ = 2.3 | C  = 2.0 | C- = 1.7 | D+ = 1.3 | D  = 1.0 | F = 0.0
+
+Special Status Indicators:
+- Y : Successful (Non-credit)
+- Z : Unsuccessful (Non-credit)
+- T : Transfer | M : Exempt | N : Non-credit | V : Withdrawn | P : In Progress
+================================================================================

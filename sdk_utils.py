@@ -54,10 +54,13 @@ def load_model(manager: FoundryLocalManager,
         The loaded Foundry Local model object.
     """
     model = manager.catalog.get_model(model_name)
-
-    # download() is idempotent — skips network transfer when already cached.
-    cb = progress_callback if progress_callback is not None else lambda p: None
-    model.download(cb)
+    
+    # Check if the model is already on disk
+    was_cached = model.is_cached
+    
+    if not was_cached:
+        cb = progress_callback if progress_callback is not None else lambda p: None
+        model.download(cb)
 
     model.load()
     return model
