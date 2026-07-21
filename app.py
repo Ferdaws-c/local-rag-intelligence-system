@@ -247,8 +247,6 @@ is_ui_locked = bool(st.session_state.get("pending_ingest")) or \
 # ------------------------------------------------------------------
 MODEL_OPTIONS = {
     "⚡ Fast — qwen2.5-0.5b (~1–2s)":       "qwen2.5-0.5b",
-    "⚖️ Balanced — phi-3.5-mini (~5–10s)":  "phi-3.5-mini",
-    "🎯 Best Quality — phi-4-mini (~8–15s)": "phi-4-mini",
 }
 
 
@@ -916,7 +914,7 @@ if prompt:
                     question=prompt,
                     embedding_client=models["embedding_client"],
                     chat_client=models["chat_client"],
-                    top_k=8,
+                    top_k=3,
                     stream_callback=stream_update,
                     chat_history=messages,
                 )

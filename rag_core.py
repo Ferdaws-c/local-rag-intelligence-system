@@ -182,7 +182,7 @@ def answer_query(question: str,
         }
 
     # C — Build grounded system prompt
-    MAX_CHUNK_CHARS = 600
+    MAX_CHUNK_CHARS = 400
     context_lines = []
     for chunk in chunks:
         # Strip the injected [Document: ...] metadata prefix permanently so neither the AI nor the UI sees it
@@ -219,7 +219,7 @@ def answer_query(question: str,
     
     if chat_history:
         # Append the last few messages for conversational memory
-        for msg in chat_history[-6:]:
+        for msg in chat_history[-2:]:
             messages.append({"role": msg["role"], "content": msg["content"]})
             
     messages.append({"role": "user", "content": question})
