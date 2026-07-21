@@ -22,7 +22,7 @@ DOCUMENTS_DIR = Path(__file__).parent / "source_documents"
 import streamlit as st
 from streamlit.runtime.scriptrunner import add_script_run_ctx, get_script_run_ctx
 
-# Theme & mobile sidebar fix — config.toml sets the base, CSS reinforces it
+# Theme & mobile sidebar fix — CSS reinforces default theme background to prevent transparency
 st.markdown("""
 <style>
 /* ── SIDEBAR: every wrapper Streamlit might use on desktop + mobile ── */
@@ -36,8 +36,7 @@ section[data-testid="stSidebar"] > div,
 [data-testid="stSidebarNav"],
 div[class*="sidebar"],
 div[class*="Sidebar"] {
-    background-color: #000000 !important;
-    background: #000000 !important;
+    background-color: var(--secondary-background-color) !important;
 }
 </style>
 """, unsafe_allow_html=True)
