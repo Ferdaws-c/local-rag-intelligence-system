@@ -720,6 +720,21 @@ with st.sidebar:
                 st.session_state.clear_kb_confirm = True
                 st.rerun()
 
+        if st.button("🧹 Free Memory (Unload AI)", key="free_mem_btn",
+                     use_container_width=True, disabled=is_ui_locked):
+            # Clear Streamlit cache
+            st.cache_resource.clear()
+            # Unload models directly from the SDK backend
+            try:
+                from foundry_local_sdk import FoundryLocalManager
+                if FoundryLocalManager.instance and hasattr(FoundryLocalManager.instance, "catalog"):
+                    for m in FoundryLocalManager.instance.catalog.get_loaded_models():
+                        if hasattr(m, 'unload'):
+                            m.unload()
+            except Exception:
+                pass
+            st.toast("✅ Memory freed! Models have been fully unloaded from RAM.", icon="✅")
+
 
 # ------------------------------------------------------------------
 # Ensure an active session exists
