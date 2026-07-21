@@ -256,7 +256,8 @@ def load_models(chat_model_name: str) -> dict:
     Loads the embedding model and the selected chat model.
     Cached per model name — only runs once per model per process lifetime.
     """
-    with st.status("🔄 Loading AI Models...", expanded=True) as status:
+    status_ph = st.empty()
+    with status_ph.status("🔄 Loading AI Models...", expanded=True) as status:
         ctx      = get_script_run_ctx()
         embed_ui = st.empty()
         chat_ui  = st.empty()
@@ -280,6 +281,7 @@ def load_models(chat_model_name: str) -> dict:
         )
         status.update(label="✅ All models loaded and ready!", state="complete", expanded=False)
 
+    status_ph.empty()
     return result
 
 
