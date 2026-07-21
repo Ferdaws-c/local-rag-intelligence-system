@@ -235,7 +235,7 @@ def answer_query(question: str,
     # C — Stream the response with a hard token cap to prevent runaway generation
     response_parts = []
     token_count    = 0
-    MAX_TOKENS     = 100
+    MAX_TOKENS     = 140
 
     for chunk in chat_client.complete_streaming_chat(messages):
         if chunk.choices:
