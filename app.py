@@ -420,7 +420,7 @@ with st.sidebar:
     selected_timeout = st.selectbox(
         "🧹 Auto-Free Memory",
         options=list(timeout_options.keys()),
-        index=0, # Default: 30 Seconds
+        index=1, # Default: 2 Minutes
         disabled=is_ui_locked,
         help="Unloads the AI from RAM if you haven't asked a question recently."
     )
