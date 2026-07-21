@@ -402,7 +402,7 @@ with st.sidebar:
     selected_label = st.selectbox(
         "Chat Model",
         options=list(MODEL_OPTIONS.keys()),
-        index=0,
+        index=1,
         help="Smaller = faster. Larger = better answers.",
         disabled=is_ui_locked,
     )
@@ -628,7 +628,7 @@ with st.sidebar:
                             prog_ph.progress(p, text=f"{int(p * 100)}% — {label}")
 
                         try:
-                            models = load_models(st.session_state.get("selected_model", list(MODEL_OPTIONS.values())[0]))
+                            models = load_models(st.session_state.get("selected_model", list(MODEL_OPTIONS.values())[1]))
                             result = run_ingestion(models["embedding_client"], progress_callback=_progress_cb, target_file=filename_to_delete, is_delete=True)
                             if result["status"] == "ok":
                                 prog_ph.success(f"✅ Deleted — {result['total']} chunks remain")
@@ -679,7 +679,7 @@ with st.sidebar:
                 prog.progress(p, text=f"{int(p * 100)}% — {label}")
 
             try:
-                models = load_models(st.session_state.get("selected_model", list(MODEL_OPTIONS.values())[0]))
+                models = load_models(st.session_state.get("selected_model", list(MODEL_OPTIONS.values())[1]))
                 result = run_ingestion(models["embedding_client"], progress_callback=_rei_cb)
                 if result["status"] == "ok":
                     prog.success(f"✅ Done — {result['total']} chunks in knowledge base")
@@ -915,7 +915,7 @@ if prompt:
                     question=prompt,
                     embedding_client=models["embedding_client"],
                     chat_client=models["chat_client"],
-                    top_k=3,
+                    top_k=5,
                     stream_callback=stream_update,
                     chat_history=messages,
                 )
