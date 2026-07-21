@@ -22,25 +22,24 @@ DOCUMENTS_DIR = Path(__file__).parent / "source_documents"
 import streamlit as st
 from streamlit.runtime.scriptrunner import add_script_run_ctx, get_script_run_ctx
 
-# Theme & mobile sidebar fix — CSS reinforces default theme background to prevent transparency
+# Sidebar background: exact colors per theme, covering all mobile/desktop wrappers
 st.markdown("""
 <style>
-/* ── SIDEBAR DARK MODE: every wrapper Streamlit might use on desktop + mobile ── */
-[data-testid="stSidebar"],
-[data-testid="stSidebar"] > div,
-[data-testid="stSidebar"] > div > div,
-section[data-testid="stSidebar"],
-section[data-testid="stSidebar"] > div,
-/* Streamlit ≥1.35 mobile drawer wrapper */
-[data-testid="stSidebarContent"],
-[data-testid="stSidebarNav"],
-div[class*="sidebar"],
-div[class*="Sidebar"] {
+/* ── DARK MODE sidebar ── */
+[data-theme="dark"] [data-testid="stSidebar"],
+[data-theme="dark"] [data-testid="stSidebar"] > div,
+[data-theme="dark"] [data-testid="stSidebar"] > div > div,
+[data-theme="dark"] section[data-testid="stSidebar"],
+[data-theme="dark"] section[data-testid="stSidebar"] > div,
+[data-theme="dark"] [data-testid="stSidebarContent"],
+[data-theme="dark"] [data-testid="stSidebarNav"],
+[data-theme="dark"] div[class*="sidebar"],
+[data-theme="dark"] div[class*="Sidebar"] {
     background-color: #0e1117 !important;
     background: #0e1117 !important;
 }
 
-/* ── SIDEBAR LIGHT MODE: off-white background ── */
+/* ── LIGHT MODE sidebar ── */
 [data-theme="light"] [data-testid="stSidebar"],
 [data-theme="light"] [data-testid="stSidebar"] > div,
 [data-theme="light"] [data-testid="stSidebar"] > div > div,
@@ -50,8 +49,8 @@ div[class*="Sidebar"] {
 [data-theme="light"] [data-testid="stSidebarNav"],
 [data-theme="light"] div[class*="sidebar"],
 [data-theme="light"] div[class*="Sidebar"] {
-    background-color: #F5F5F0 !important;
-    background: #F5F5F0 !important;
+    background-color: #ffffff !important;
+    background: #ffffff !important;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -78,17 +77,15 @@ st.set_page_config(
     layout="centered",
 )
 
-# Keyboard shortcut blocker + dynamic sidebar theme fix
+# Disable the annoying 'c' (clear cache) and 'r' (rerun) keyboard shortcuts
 import streamlit.components.v1 as components
 components.html(
     """
     <script>
     const parentDoc = window.parent.document;
-
-    // ── 1. Block annoying keyboard shortcuts ──────────────────────────
     parentDoc.addEventListener('keydown', function(e) {
-        if ((e.key.toLowerCase() === 'c' || e.key.toLowerCase() === 'r') &&
-            e.target.nodeName !== 'INPUT' &&
+        if ((e.key.toLowerCase() === 'c' || e.key.toLowerCase() === 'r') && 
+            e.target.nodeName !== 'INPUT' && 
             e.target.nodeName !== 'TEXTAREA' &&
             !e.target.isContentEditable) {
             e.stopImmediatePropagation();
@@ -96,52 +93,11 @@ components.html(
             e.preventDefault();
         }
     }, true);
-
-    // ── 2. Dynamic sidebar background based on active theme ───────────
-    const DARK_BG  = '#0e1117';
-    const LIGHT_BG = '#F5F5F0';
-
-    function getSidebarEls() {
-        return parentDoc.querySelectorAll(
-            '[data-testid="stSidebar"], ' +
-            '[data-testid="stSidebar"] > div, ' +
-            '[data-testid="stSidebar"] > div > div, ' +
-            'section[data-testid="stSidebar"], ' +
-            'section[data-testid="stSidebar"] > div, ' +
-            '[data-testid="stSidebarContent"], ' +
-            '[data-testid="stSidebarNav"]'
-        );
-    }
-
-    function applyThemeColor() {
-        // Streamlit sets data-theme on <html> or <body> or stApp div
-        const themeEl = parentDoc.querySelector('[data-theme]') ||
-                        parentDoc.documentElement;
-        const isLight = (themeEl.dataset.theme === 'light') ||
-                        parentDoc.documentElement.classList.contains('light');
-        const color = isLight ? LIGHT_BG : DARK_BG;
-        getSidebarEls().forEach(el => {
-            el.style.setProperty('background-color', color, 'important');
-            el.style.setProperty('background', color, 'important');
-        });
-    }
-
-    // Apply immediately and on every DOM/attribute change
-    applyThemeColor();
-
-    const observer = new MutationObserver(applyThemeColor);
-    // Watch for theme attribute changes on the whole document tree
-    observer.observe(parentDoc.documentElement, {
-        attributes: true,
-        subtree: true,
-        attributeFilter: ['data-theme', 'class']
-    });
     </script>
     """,
     height=0,
     width=0,
 )
-
 
 # Additional UI polish
 st.markdown(
