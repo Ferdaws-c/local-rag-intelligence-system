@@ -206,11 +206,16 @@ def answer_query(question: str,
         "Rule 7: NEVER calculate or estimate numbers. Quote explicit numbers (e.g. GPA, voltage) exactly.\n"
         "Rule 8: Treat isolated letters (e.g., A, B+) next to items in tables as their score/grade. List all exact matches.\n"
         "Rule 9: Assume all chunks describe the SAME central subject (e.g., the same person). Safely link disconnected facts across chunks (for example, if Chunk 1 has a name and Chunk 2 has a GPA, that GPA belongs to that name).\n"
-        "DO NOT use 'Rule X' as a heading in your response. Just answer the question.\n\n"
+        "Rule 10: NEVER output meta-commentary, notes, apologies, or explanations (e.g. do not say '(Note: This was extracted from...)'). Just answer the question.\n"
+        "DO NOT use 'Rule X' as a heading in your response.\n\n"
         f"Context:\n{context_text}"
     )
 
     messages = [{"role": "system", "content": system_prompt}]
+    
+    # Generic few-shot example to mathematically force small models to adhere to the refusal format
+    messages.append({"role": "user", "content": "What is the capital of Mars?"})
+    messages.append({"role": "assistant", "content": "I don't have that information."})
     
     if chat_history:
         # Append the last few messages for conversational memory
