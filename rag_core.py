@@ -193,29 +193,26 @@ def answer_query(question: str,
         context_lines.append(f"--- START SOURCE: {source} ---\n{content}\n--- END SOURCE ---")
     context_text = "\n\n".join(context_lines)
 
-    system_prompt = (
+    # Instead of relying on a "system" role (which many local models/templates silently drop),
+    # we inject the rules, context, and question directly into the final "user" prompt.
+    final_prompt = (
         "You are a strict RAG extraction bot.\n"
         "RULE 1: You must ONLY use the exact facts from the Context below.\n"
         "RULE 2: If the Context does not contain the answer, you MUST output EXACTLY: \"I don't have that information.\"\n"
         "RULE 3: NEVER guess, NEVER use outside knowledge, and NEVER calculate numbers.\n"
         "RULE 4: Always cite the [Source Name].\n"
         "RULE 5: Do NOT output any notes, commentary, or headers.\n\n"
-        f"Context:\n{context_text}"
+        f"Context:\n{context_text}\n\n"
+        f"Question: {question}\n\n"
+        "[CRITICAL REMINDER: If the exact answer is not explicitly written in the Context above, you MUST answer exactly 'I don't have that information.' Do not use outside knowledge.]"
     )
 
-    messages = [{"role": "system", "content": system_prompt}]
-    
-    # Generic few-shot example to mathematically force small models to adhere to the refusal format
-    messages.append({"role": "user", "content": "What is the capital of Mars?"})
-    messages.append({"role": "assistant", "content": "I don't have that information."})
-    
+    messages = []
     if chat_history:
-        # Append the last few messages for conversational memory
         for msg in chat_history[-2:]:
             messages.append({"role": msg["role"], "content": msg["content"]})
             
-    enforced_question = f"{question}\n\n[CRITICAL REMINDER: If the exact answer is not explicitly written in the Context above, you MUST answer exactly 'I don't have that information.' Do not use outside knowledge.]"
-    messages.append({"role": "user", "content": enforced_question})
+    messages.append({"role": "user", "content": final_prompt})
 
     # C — Stream the response with a hard token cap to prevent runaway generation
     response_parts = []
