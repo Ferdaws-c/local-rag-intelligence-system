@@ -94,16 +94,14 @@ class MemoryMonitor:
     def set_busy(cls, busy: bool):
         """Sets the busy flag to prevent unloading while actively working."""
         cls.is_busy = busy
-        if not busy:
-            # When finishing work, immediately ping so we get a full idle window
-            cls.ping()
+        # NOTE: Do NOT ping here. We want the idle timer to count from when
+        # the query STARTED, not from when it finished.
 
     @classmethod
     def set_timeout(cls, seconds: int):
-        """Updates the auto-free timeout."""
+        """Updates the auto-free timeout. Only updates the value — does NOT reset the
+        idle timer. This is safe to call on every Streamlit re-render without side-effects."""
         cls.timeout_seconds = seconds
-        # Also ping immediately so changing the dropdown doesn't instantly unload if idle
-        cls.ping()
 
     @classmethod
     def force_unload(cls):
