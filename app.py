@@ -35,7 +35,9 @@ st.markdown("""
 [data-theme="light"] .stApp {
     background-color: #E0E0E0 !important;
 }
-[data-theme="light"] [data-testid="stSidebar"] {
+[data-theme="light"] [data-testid="stSidebar"],
+[data-theme="light"] [data-testid="stSidebar"] > div:first-child,
+[data-theme="light"] section[data-testid="stSidebar"] {
     background-color: #888888 !important;
 }
 [data-theme="light"] [data-testid="stSidebar"] * {
@@ -93,7 +95,11 @@ st.markdown(
     """
     <style>
     .stApp { background-color: var(--background-color); }
-    [data-testid="stSidebar"] { background-color: var(--secondary-background-color); }
+    [data-testid="stSidebar"], 
+    [data-testid="stSidebar"] > div:first-child,
+    section[data-testid="stSidebar"] { 
+        background-color: var(--secondary-background-color) !important; 
+    }
     /* Base sidebar button style */
     div[data-testid="stSidebar"] .stButton > button {
         width: 100%;
