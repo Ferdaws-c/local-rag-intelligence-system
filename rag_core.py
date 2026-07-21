@@ -212,7 +212,7 @@ def answer_query(question: str,
         "RULE 4: Always cite the [Source Name].\n"
         "RULE 5: Do NOT output any notes, commentary, or headers.\n"
         "RULE 6: Answer EXACTLY what is asked. If asked for an ID, provide the numeric ID. Assume all chunks describe the same person (e.g. resolve 'his' or 'her' to the subject of the text).\n"
-        "RULE 7: Your answer MUST be at least 3 complete sentences. Expand on the facts found in the Context to give a full, meaningful response.\n\n"
+        "RULE 7: Keep your answer to a MAXIMUM of 4 sentences. Be concise.\n\n"
         f"Context:\n{context_text}\n\n"
         f"Question: {question}\n\n"
         "[CRITICAL REMINDER: If the exact answer is not explicitly written in the Context above, you MUST answer exactly 'I don't have that information.' Do not use outside knowledge.]"
@@ -228,7 +228,7 @@ def answer_query(question: str,
     # C — Stream the response with a hard token cap to prevent runaway generation
     response_parts = []
     token_count    = 0
-    MAX_TOKENS     = 350
+    MAX_TOKENS     = 200
 
     for chunk in chat_client.complete_streaming_chat(messages):
         if chunk.choices:
