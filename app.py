@@ -22,26 +22,22 @@ DOCUMENTS_DIR = Path(__file__).parent / "source_documents"
 import streamlit as st
 from streamlit.runtime.scriptrunner import add_script_run_ctx, get_script_run_ctx
 
-# Custom CSS to override Light Theme with the requested grey colors
-# while keeping the native Dark Mode intact and the Theme toggle visible.
+# Theme & mobile sidebar fix — config.toml sets the base, CSS reinforces it
 st.markdown("""
 <style>
-[data-theme="light"] {
-    --primary-color: #4F4F4F !important;
-    --background-color: #E0E0E0 !important;
-    --secondary-background-color: #888888 !important;
-    --text-color: #111111 !important;
-}
-[data-theme="light"] .stApp {
-    background-color: #E0E0E0 !important;
-}
-[data-theme="light"] [data-testid="stSidebar"],
-[data-theme="light"] [data-testid="stSidebar"] > div:first-child,
-[data-theme="light"] section[data-testid="stSidebar"] {
-    background-color: #888888 !important;
-}
-[data-theme="light"] [data-testid="stSidebar"] * {
-    color: #111111 !important;
+/* ── SIDEBAR: every wrapper Streamlit might use on desktop + mobile ── */
+[data-testid="stSidebar"],
+[data-testid="stSidebar"] > div,
+[data-testid="stSidebar"] > div > div,
+section[data-testid="stSidebar"],
+section[data-testid="stSidebar"] > div,
+/* Streamlit ≥1.35 mobile drawer wrapper */
+[data-testid="stSidebarContent"],
+[data-testid="stSidebarNav"],
+div[class*="sidebar"],
+div[class*="Sidebar"] {
+    background-color: #1E2130 !important;
+    background: #1E2130 !important;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -90,16 +86,11 @@ components.html(
     width=0,
 )
 
-# Solid background colors to prevent transparency bleed in light mode
+# Additional UI polish
 st.markdown(
     """
     <style>
     .stApp { background-color: var(--background-color); }
-    [data-testid="stSidebar"], 
-    [data-testid="stSidebar"] > div:first-child,
-    section[data-testid="stSidebar"] { 
-        background-color: var(--secondary-background-color) !important; 
-    }
     /* Base sidebar button style */
     div[data-testid="stSidebar"] .stButton > button {
         width: 100%;
