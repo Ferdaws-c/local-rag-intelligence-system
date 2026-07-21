@@ -51,9 +51,26 @@ def read_pdf(filepath: Path) -> str:
 def read_docx(filepath: Path) -> str:
     try:
         import docx
-        doc        = docx.Document(str(filepath))
-        paragraphs = [p.text.strip() for p in doc.paragraphs if p.text.strip()]
-        return "\n\n".join(paragraphs)
+        doc = docx.Document(str(filepath))
+        lines = []
+        for element in doc.element.body:
+            tag = element.tag.lower()
+            if tag.endswith('p'):
+                p = docx.text.paragraph.Paragraph(element, doc)
+                txt = p.text.strip()
+                if txt:
+                    lines.append(txt)
+            elif tag.endswith('tbl'):
+                t = docx.table.Table(element, doc)
+                for row in t.rows:
+                    row_vals = []
+                    for cell in row.cells:
+                        ct = cell.text.strip()
+                        if ct and (not row_vals or ct != row_vals[-1]):
+                            row_vals.append(ct)
+                    if row_vals:
+                        lines.append(" | ".join(row_vals))
+        return "\n\n".join(lines)
     except Exception as e:
         print(f"  WARNING: Could not read DOCX {filepath.name}: {e}")
         return ""
