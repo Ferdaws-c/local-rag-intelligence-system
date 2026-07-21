@@ -46,7 +46,7 @@ def cosine_similarity(vec_a: list[float], vec_b: list[float]) -> float:
 # ------------------------------------------------------------------
 def get_top_chunks(query: str,
                    embedding_client,
-                   top_k: int = 5) -> list[dict]:
+                   top_k: int = 8) -> list[dict]:
     """
     Embeds the query, fetches all stored vectors from SQLite, ranks
     them by cosine similarity, and returns the top_k matches.
@@ -80,7 +80,7 @@ def get_top_chunks(query: str,
                         "content": content, "score": score})
 
     # Return highest-scoring chunks above the minimum relevance threshold
-    MIN_SCORE_THRESHOLD = 0.36  # Reject chunks below 36% cosine similarity
+    MIN_SCORE_THRESHOLD = 0.25  # Reject chunks below 25% cosine similarity
     scored.sort(key=lambda x: x["score"], reverse=True)
     top = [c for c in scored[:top_k] if c["score"] >= MIN_SCORE_THRESHOLD]
     return top

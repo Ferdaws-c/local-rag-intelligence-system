@@ -873,7 +873,7 @@ if prompt:
                 question=prompt,
                 embedding_client=models["embedding_client"],
                 chat_client=models["chat_client"],
-                top_k=5,
+                top_k=8,
                 stream_callback=stream_update,
                 chat_history=messages,
             )
