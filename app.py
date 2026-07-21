@@ -36,8 +36,8 @@ section[data-testid="stSidebar"] > div,
 [data-testid="stSidebarNav"],
 div[class*="sidebar"],
 div[class*="Sidebar"] {
-    background-color: #1E2130 !important;
-    background: #1E2130 !important;
+    background-color: #000000 !important;
+    background: #000000 !important;
 }
 </style>
 """, unsafe_allow_html=True)
