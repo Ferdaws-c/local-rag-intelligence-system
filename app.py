@@ -14,8 +14,15 @@ Features:
 """
 
 import threading
-import shutil
+import uuid
 from pathlib import Path
+
+# --- Helper for UI preview formatting ---
+import re
+def clean_source_preview(content: str) -> str:
+    cleaned = re.sub(r"={3,}|-{3,}", "", content)
+    cleaned = re.sub(r"\s+", " ", cleaned).strip()
+    return cleaned[:150] + "..." if len(cleaned) > 150 else cleaned
 
 DOCUMENTS_DIR = Path(__file__).parent / "source_documents"
 
@@ -855,7 +862,7 @@ for i, msg in enumerate(messages):
                     st.markdown(
                         f"**{src['filename']}** — `{src['score'] * 100:.1f}%` match"
                     )
-                    st.caption(src["content"][:200] + "...")
+                    st.caption(clean_source_preview(src["content"]))
 
 # ------------------------------------------------------------------
 # Chat Input (handles both typed input and retry)
@@ -924,7 +931,7 @@ if prompt:
                     st.markdown(
                         f"**{src['filename']}** — `{src['score'] * 100:.1f}%` match"
                     )
-                    st.caption(src["content"][:200] + "...")
+                    st.caption(clean_source_preview(src["content"]))
 
         # Persist assistant response to history DB
         add_message(active_session_id, "assistant", answer, sources=sources)
