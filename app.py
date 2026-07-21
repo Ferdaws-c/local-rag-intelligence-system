@@ -627,7 +627,7 @@ with st.sidebar:
                             prog_ph.progress(p, text=f"{int(p * 100)}% — {label}")
 
                         try:
-                            models = load_models(st.session_state.get("selected_model", list(MODEL_OPTIONS.values())[1]))
+                            models = load_models(st.session_state.get("selected_model", list(MODEL_OPTIONS.values())[0]))
                             result = run_ingestion(models["embedding_client"], progress_callback=_progress_cb, target_file=filename_to_delete, is_delete=True)
                             if result["status"] == "ok":
                                 prog_ph.success(f"✅ Deleted — {result['total']} chunks remain")
@@ -678,7 +678,7 @@ with st.sidebar:
                 prog.progress(p, text=f"{int(p * 100)}% — {label}")
 
             try:
-                models = load_models(st.session_state.get("selected_model", list(MODEL_OPTIONS.values())[1]))
+                models = load_models(st.session_state.get("selected_model", list(MODEL_OPTIONS.values())[0]))
                 result = run_ingestion(models["embedding_client"], progress_callback=_rei_cb)
                 if result["status"] == "ok":
                     prog.success(f"✅ Done — {result['total']} chunks in knowledge base")
