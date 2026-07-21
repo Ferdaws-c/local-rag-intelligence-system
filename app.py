@@ -67,6 +67,10 @@ from chat_history import (
 )
 from rag_core import answer_query, init_models
 from ingest import run_ingestion, SUPPORTED_EXTENSIONS, rename_document, clear_knowledge_base
+from sdk_utils import MemoryMonitor
+
+# Start the background idle timeout watcher
+MemoryMonitor.start()
 
 # ------------------------------------------------------------------
 # Page Configuration
@@ -720,20 +724,21 @@ with st.sidebar:
                 st.session_state.clear_kb_confirm = True
                 st.rerun()
 
-        if st.button("🧹 Free Memory (Unload AI)", key="free_mem_btn",
-                     use_container_width=True, disabled=is_ui_locked):
-            # Clear Streamlit cache
-            st.cache_resource.clear()
-            # Unload models directly from the SDK backend
-            try:
-                from foundry_local_sdk import FoundryLocalManager
-                if FoundryLocalManager.instance and hasattr(FoundryLocalManager.instance, "catalog"):
-                    for m in FoundryLocalManager.instance.catalog.get_loaded_models():
-                        if hasattr(m, 'unload'):
-                            m.unload()
-            except Exception:
-                pass
-            st.toast("✅ Memory freed! Models have been fully unloaded from RAM.", icon="✅")
+        timeout_options = {
+            "30 Seconds": 30,
+            "2 Minutes": 120,
+            "5 Minutes": 300,
+            "30 Minutes": 1800,
+            "Keep (Don't free)": 0
+        }
+        selected_timeout = st.selectbox(
+            "🧹 Auto-Free Memory",
+            options=list(timeout_options.keys()),
+            index=2, # Default: 5 Minutes
+            disabled=is_ui_locked,
+            help="Unloads the AI from RAM if you haven't asked a question recently."
+        )
+        MemoryMonitor.set_timeout(timeout_options[selected_timeout])
 
 
 # ------------------------------------------------------------------
@@ -842,6 +847,8 @@ if new_prompt and not st.session_state.is_generating:
 prompt = st.session_state.processing_prompt
 
 if prompt:
+    # Reset idle timer since the user is actively querying
+    MemoryMonitor.ping()
 
     # Load (or retrieve cached) models
     try:

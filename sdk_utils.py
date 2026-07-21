@@ -64,3 +64,62 @@ def load_model(manager: FoundryLocalManager,
 
     model.load()
     return model
+
+
+# ------------------------------------------------------------------
+# Background Memory Monitor
+# ------------------------------------------------------------------
+import threading
+import time
+
+class MemoryMonitor:
+    last_query_time = time.time()
+    timeout_seconds = 300  # Default to 5 minutes
+    _thread = None
+
+    @classmethod
+    def start(cls):
+        """Starts the background thread if it isn't running already."""
+        if cls._thread is None:
+            cls._thread = threading.Thread(target=cls._watchdog, daemon=True)
+            cls._thread.start()
+
+    @classmethod
+    def ping(cls):
+        """Resets the idle timer (call this whenever the user interacts)."""
+        cls.last_query_time = time.time()
+
+    @classmethod
+    def set_timeout(cls, seconds: int):
+        """Updates the auto-free timeout."""
+        cls.timeout_seconds = seconds
+        # Also ping immediately so changing the dropdown doesn't instantly unload if idle
+        cls.ping()
+
+    @classmethod
+    def _watchdog(cls):
+        """Background loop that checks for idle expiration."""
+        while True:
+            time.sleep(5)
+            if cls.timeout_seconds > 0:
+                elapsed = time.time() - cls.last_query_time
+                if elapsed >= cls.timeout_seconds:
+                    # Time has expired, unload models
+                    if FoundryLocalManager.instance and hasattr(FoundryLocalManager.instance, "catalog"):
+                        try:
+                            models = FoundryLocalManager.instance.catalog.get_loaded_models()
+                            for m in models:
+                                if hasattr(m, 'unload'):
+                                    m.unload()
+                        except Exception:
+                            pass
+                    
+                    # Clear Streamlit cache safely from background thread
+                    try:
+                        import streamlit as st
+                        st.cache_resource.clear()
+                    except Exception:
+                        pass
+                    
+                    # Reset timer so we don't spam unload in a loop
+                    cls.last_query_time = time.time()
