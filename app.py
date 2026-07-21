@@ -52,6 +52,13 @@ st.markdown("""
     background-color: #ffffff !important;
     background: #ffffff !important;
 }
+
+/* ── Force Sidebar Scrollability ── */
+[data-testid="stSidebarContent"], 
+[data-testid="stSidebarUserContent"] {
+    overflow-y: auto !important;
+    padding-bottom: 5rem !important; /* Extra padding so the bottom selectbox isn't cut off */
+}
 </style>
 """, unsafe_allow_html=True)
 
