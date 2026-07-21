@@ -166,11 +166,13 @@ def load_and_chunk_documents(documents_dir: Path, target_filename: str = None) -
         while i < len(non_empty_lines):
             window = non_empty_lines[i : i + CHUNK_LINES]
             chunk_text = "\n".join(window)
-            # Prefix every chunk with the document title for better embedding context
+            # Prefix every chunk with the document title to improve embedding relevance
+            # This ensures that even raw tables/lists are semantically linked to the file topic.
+            context_prefix = f"[Document: {filepath.name}]\n"
             if window[0] != title:
-                content_to_embed = f"{title}\n\n{chunk_text}"
+                content_to_embed = f"{context_prefix}{title}\n{chunk_text}"
             else:
-                content_to_embed = chunk_text
+                content_to_embed = f"{context_prefix}{chunk_text}"
             chunks_for_file.append({"filename": filepath.name, "content": content_to_embed})
             i += step
 
