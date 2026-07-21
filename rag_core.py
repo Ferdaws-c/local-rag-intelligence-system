@@ -214,7 +214,8 @@ def answer_query(question: str,
         for msg in chat_history[-2:]:
             messages.append({"role": msg["role"], "content": msg["content"]})
             
-    messages.append({"role": "user", "content": question})
+    enforced_question = f"{question}\n\n[CRITICAL REMINDER: If the exact answer is not explicitly written in the Context above, you MUST answer exactly 'I don't have that information.' Do not use outside knowledge.]"
+    messages.append({"role": "user", "content": enforced_question})
 
     # C — Stream the response with a hard token cap to prevent runaway generation
     response_parts = []
