@@ -78,15 +78,17 @@ st.set_page_config(
     layout="centered",
 )
 
-# Disable the annoying 'c' (clear cache) and 'r' (rerun) keyboard shortcuts
+# Keyboard shortcut blocker + dynamic sidebar theme fix
 import streamlit.components.v1 as components
 components.html(
     """
     <script>
     const parentDoc = window.parent.document;
+
+    // ── 1. Block annoying keyboard shortcuts ──────────────────────────
     parentDoc.addEventListener('keydown', function(e) {
-        if ((e.key.toLowerCase() === 'c' || e.key.toLowerCase() === 'r') && 
-            e.target.nodeName !== 'INPUT' && 
+        if ((e.key.toLowerCase() === 'c' || e.key.toLowerCase() === 'r') &&
+            e.target.nodeName !== 'INPUT' &&
             e.target.nodeName !== 'TEXTAREA' &&
             !e.target.isContentEditable) {
             e.stopImmediatePropagation();
@@ -94,11 +96,52 @@ components.html(
             e.preventDefault();
         }
     }, true);
+
+    // ── 2. Dynamic sidebar background based on active theme ───────────
+    const DARK_BG  = '#0e1117';
+    const LIGHT_BG = '#F5F5F0';
+
+    function getSidebarEls() {
+        return parentDoc.querySelectorAll(
+            '[data-testid="stSidebar"], ' +
+            '[data-testid="stSidebar"] > div, ' +
+            '[data-testid="stSidebar"] > div > div, ' +
+            'section[data-testid="stSidebar"], ' +
+            'section[data-testid="stSidebar"] > div, ' +
+            '[data-testid="stSidebarContent"], ' +
+            '[data-testid="stSidebarNav"]'
+        );
+    }
+
+    function applyThemeColor() {
+        // Streamlit sets data-theme on <html> or <body> or stApp div
+        const themeEl = parentDoc.querySelector('[data-theme]') ||
+                        parentDoc.documentElement;
+        const isLight = (themeEl.dataset.theme === 'light') ||
+                        parentDoc.documentElement.classList.contains('light');
+        const color = isLight ? LIGHT_BG : DARK_BG;
+        getSidebarEls().forEach(el => {
+            el.style.setProperty('background-color', color, 'important');
+            el.style.setProperty('background', color, 'important');
+        });
+    }
+
+    // Apply immediately and on every DOM/attribute change
+    applyThemeColor();
+
+    const observer = new MutationObserver(applyThemeColor);
+    // Watch for theme attribute changes on the whole document tree
+    observer.observe(parentDoc.documentElement, {
+        attributes: true,
+        subtree: true,
+        attributeFilter: ['data-theme', 'class']
+    });
     </script>
     """,
     height=0,
     width=0,
 )
+
 
 # Additional UI polish
 st.markdown(
