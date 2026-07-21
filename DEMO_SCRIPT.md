@@ -1,5 +1,5 @@
-# 🎬 Demo Video Script
-## Ferdaws Qaem — Local RAG Assistant
+# 🎬 Presentation Video Script (Plain English Version)
+## Ferdaws Qaem — Local AI Assistant
 ### Final Presentation Guide
 
 ---
@@ -10,142 +10,120 @@
 
 ## SECTION 1 — Introduction (0:00 – 0:45)
 
-**[Screen: Show the GitHub repository page]**
+**[What to do on screen: Show your GitHub repository page]**
 
-> "Hi, my name is Ferdaws Qaem, and this is my final project for the Local AI with Microsoft Foundry Local summer school program.
+**[What to say:]**
+> "Hi everyone, my name is Ferdaws Qaem, and this is my final project for the Local AI summer school program. 
 >
-> I built a fully offline AI-powered Q&A assistant for my academic and professional profile.
-> What makes this project special is that **everything runs on my local machine** — no cloud services, no API keys, no internet connection needed for the AI part.
-> The entire AI pipeline — from understanding your question to generating an answer — happens right here on this computer."
+> I built a smart AI assistant that acts like my personal representative. It can answer questions about my academic background, my work experience, and my projects. 
+>
+> But what makes this project special is privacy. **Everything runs completely offline on my own computer.** No data is sent to the internet, and I don't use any paid cloud services. The AI lives right here on my laptop."
 
 ---
 
-## SECTION 2 — Problem Statement (0:45 – 1:30)
+## SECTION 2 — The Problem (0:45 – 1:30)
 
-**[Screen: Keep GitHub open or switch to a simple slide/notes]**
+**[What to do on screen: Show a folder with your 5 text documents (transcript, profile, etc.)]**
 
-> "So what problem does this solve?
+**[What to say:]**
+> "Why did I build this? 
 >
-> Imagine you're a recruiter or hiring manager reviewing my profile. I have 5 documents — my profile overview, official transcript, work experience, projects, and Microsoft AI Innovators details.
+> Imagine a recruiter or a teacher wanting to know about my background. Normally, they would have to read through 5 different documents: my official transcript, my resume, my project details, and so on. That takes a lot of time.
 >
-> Without AI, you'd have to search through all of these manually to find specific details about my background.
-> With this assistant, they just **ask a question in plain English** and get a precise, cited answer in seconds — all running privately on their own device.
+> With my app, they can just type a question in plain English, and the AI instantly reads all my documents and gives them an exact answer in seconds.
 >
-> This is what's called **Retrieval-Augmented Generation**, or RAG."
+> In the tech world, this method is called **RAG** (Retrieval-Augmented Generation), which basically means 'Search first, then Answer'."
 
 ---
 
-## SECTION 3 — Architecture Explanation (1:30 – 2:30)
+## SECTION 3 — How It Works in Plain English (1:30 – 2:30)
 
-**[Screen: Open README.md on GitHub and point to the architecture diagram]**
+**[What to do on screen: Open your app in the browser so it's ready to use]**
 
-> "Let me quickly explain how it works under the hood — there are 4 steps.
+**[What to say:]**
+> "Before I show you the app, let me explain how it works in 3 simple steps:
 >
-> **Step 1 — Ingestion**: When we first set up the app, a script called `ingest.py` reads all 5 documents, splits them into paragraph-level chunks, and converts each chunk into a numerical vector called an **embedding** using a local AI model. These vectors are stored in a lightweight SQLite database.
+> **Step 1: Reading.** The app reads my 5 text documents and chops them up into small paragraphs. It stores these paragraphs in a tiny, local database.
 >
-> **Step 2 — Retrieval**: When you ask a question, the app converts your question into an embedding too, then compares it mathematically to every stored chunk using **cosine similarity** — essentially measuring 'how similar is this question to each paragraph?' The top 5 most relevant paragraphs are selected.
+> **Step 2: Searching.** When you ask a question, the app searches that database to find the top 5 paragraphs that are most related to your question.
 >
-> **Step 3 — Augmentation**: Those paragraphs are injected into a strict system prompt that tells the AI: 'Answer using ONLY what you see in the context below. If the answer isn't there, say you don't know.'
+> **Step 3: Answering.** Finally, the app takes your question and those 5 paragraphs, and gives them to the local AI. It gives the AI a very strict rule: *'Answer the user's question using ONLY the information in these paragraphs. If the answer isn't there, say you don't know.'* 
 >
-> **Step 4 — Generation**: A local large language model reads the question and the context and generates a grounded, cited answer."
+> Because of this rule, the AI won't lie or make things up."
 
 ---
 
 ## SECTION 4 — Live Demo (2:30 – 5:30)
 
-**[Screen: Run `streamlit run app.py`, browser opens at localhost:8501]**
+**[What to do on screen: Show the Streamlit chat interface]**
 
-> "Let me show you the actual application."
+**[What to say:]**
+> "Let's see it in action."
 
-### Demo Query 1 — In-context question ✅
+### Demo Query 1 — A basic question ✅
 **[Type in the chat box:]** `What is Ferdaws's student ID?`
 
-> "I'll ask about my student ID. Watch how it streams the answer word by word in real time, and notice the 'Sources Retrieved' panel at the bottom — it tells us exactly which document the answer came from and how confident the retrieval was."
+> "First, I'll ask about my student ID. Watch how the AI types out the answer in real-time."
 
-**[Wait for answer, then point to sources panel]**
+**[Wait for answer to finish, then point to the 'Sources' panel at the bottom]**
 
-> "You can see it pulled from `official_transcript.txt` with a high similarity score, and it correctly cited the document in its answer."
+> "Not only does it answer correctly, but if you look down here at the 'Sources' panel, it shows us exactly which document it read to find that answer. It pulled this right from my `official_transcript.txt`."
 
 ---
 
-### Demo Query 2 — Professional question ✅
+### Demo Query 2 — An experience question ✅
 **[Type:]** `Has Ferdaws completed an Erasmus program?`
 
-> "Now let me ask a question about my academic experience."
+> "Now let's ask a question about my academic experience."
 
 **[Wait for answer]**
 
-> "It pulled from `official_transcript.txt` and gave a clear answer — again, only from the actual documents."
+> "Again, it searches my documents, finds the section about my Erasmus exchange program, and gives a clear answer."
 
 ---
 
-### Demo Query 3 — Out-of-context question ✅
+### Demo Query 3 — The Trick Question ✅
 **[Type:]** `Who is the president of the United States?`
 
-> "Now, this is the most important test. I'll ask something completely outside the knowledge base."
+> "Now, this is the most important test. I'm going to ask it a random trick question that has nothing to do with me."
 
-**[Wait for answer — expected: 'I don't have that information']**
+**[Wait for answer — it should say 'I don't have that information']**
 
-> "And there it is — the assistant correctly refuses to answer. It doesn't make something up, it doesn't hallucinate. It says exactly what we programmed it to say: 'I don't have that information.' This is critical for a trustworthy production system."
-
----
-
-### Demo Query 4 — Model switching ⚡
-**[Switch sidebar to '⚡ Fast — qwen2.5-0.5b']**
-
-> "One more feature I'm proud of — the sidebar lets you switch between three different AI models. This Fast model is only 0.5 billion parameters — watch how quickly it responds."
-
-**[Type:]** `What university does Ferdaws attend?`
-
-> "About 1-2 seconds. The tradeoff is answer quality. The Balanced model takes longer but gives more nuanced responses. This lets users choose based on their hardware and patience."
+> "As you can see, the assistant refuses to answer. It doesn't guess, and it doesn't make things up. It simply says 'I don't have that information.' This proves that the AI is safely restricted to only my personal documents."
 
 ---
 
 ## SECTION 5 — Testing Results (5:30 – 6:30)
 
-**[Screen: Switch to terminal, run `python test_suite.py`, or show pre-saved test_results.txt]**
+**[What to do on screen: Open your code editor and show the `test_suite.py` file or the test results text file]**
 
-> "For Week 5, I built an automated test suite that evaluates the assistant across 12 test cases in three categories."
-
-**[Point to results on screen]**
-
-> "In-context questions — where the answer IS in the documents — the assistant passes consistently.
-> Out-of-context questions — where the answer is NOT in the documents — it correctly falls back.
-> Edge cases like typing just 'hi' or a single '?' — it handles gracefully without crashing."
+**[What to say:]**
+> "To make sure the app works perfectly, I wrote an automated test script. 
+> 
+> The script automatically asked the AI 12 different questions: some about my profile, some trick questions, and some confusing edge cases (like just typing a question mark).
+>
+> I'm happy to report that the AI scored a 100% pass rate. It answered the profile questions correctly and safely refused the trick questions every single time."
 
 ---
 
 ## SECTION 6 — Lessons Learned (6:30 – 7:30)
 
-**[Screen: Return to app or GitHub]**
+**[What to do on screen: Return to your app or GitHub page]**
 
-> "Three key things I learned building this project.
+**[What to say:]**
+> "To wrap up, here are the two biggest things I learned from this project:
 >
-> **First — chunking strategy matters enormously.** Early on, we were only retrieving 2 chunks, and we kept getting the title paragraph of the document instead of the actual content. Increasing to top_k=5 fixed retrieval quality dramatically.
+> **Number one: You have to be bossy with AI.** If you just tell an AI 'answer this question', it will sometimes get creative and invent details. I had to use strict words like 'Do NOT use outside knowledge' to force it to stick to the facts.
 >
-> **Second — prompt engineering is the difference between a trustworthy AI and a hallucinating one.** Simply saying 'use only the context' isn't enough. You need to use words like 'STRICT', 'EXACTLY', and 'Do NOT use outside knowledge' to get small models to follow the rules.
->
-> **Third — local AI is completely viable.** Every single model in this app runs offline on my own hardware. No data leaves this machine. For privacy-sensitive use cases like customer support, this is a genuine advantage over cloud-based solutions."
+> **Number two: Running AI offline is amazing.** I ran all of this on my own laptop's hardware. It's fast, it's completely private, and it shows that you don't always need expensive cloud servers to build powerful AI tools."
 
 ---
 
 ## SECTION 7 — Closing (7:30 – 8:00)
 
-**[Screen: GitHub repository]**
+**[What to do on screen: Show your GitHub repository page one last time]**
 
-> "The full source code is on GitHub — link in the description. The README has complete setup instructions so anyone can clone this and run it on their own machine in under 5 minutes.
+**[What to say:]**
+> "All the code for this project is open source and available on my GitHub. The instructions are included so anyone can download it and run it on their own machine.
 >
 > Thank you for watching!"
-
----
-
-## 📝 Pre-Recording Checklist
-
-- [ ] Foundry Local service is running (verify no errors in system tray)
-- [ ] Run `python ingest.py` in `final_project/` to confirm DB is fresh
-- [ ] Run `streamlit run app.py` and confirm it loads in browser
-- [ ] Test all 3 demo queries manually BEFORE recording to confirm models are cached
-- [ ] Set screen resolution to 1920×1080 for crisp recording
-- [ ] Use a screen recorder (OBS Studio, Xbox Game Bar, or Loom)
-- [ ] Record in a quiet room — microphone quality matters
-- [ ] Do one full dry run before the final take
