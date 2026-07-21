@@ -76,6 +76,7 @@ class MemoryMonitor:
     last_query_time = time.time()
     timeout_seconds = 300  # Default to 5 minutes
     _thread = None
+    is_busy = False
 
     @classmethod
     def start(cls):
@@ -90,6 +91,14 @@ class MemoryMonitor:
         cls.last_query_time = time.time()
 
     @classmethod
+    def set_busy(cls, busy: bool):
+        """Sets the busy flag to prevent unloading while actively working."""
+        cls.is_busy = busy
+        if not busy:
+            # When finishing work, immediately ping so we get a full idle window
+            cls.ping()
+
+    @classmethod
     def set_timeout(cls, seconds: int):
         """Updates the auto-free timeout."""
         cls.timeout_seconds = seconds
@@ -101,6 +110,10 @@ class MemoryMonitor:
         """Background loop that checks for idle expiration."""
         while True:
             time.sleep(5)
+            # Skip checking if the app is actively processing something
+            if cls.is_busy:
+                continue
+
             if cls.timeout_seconds > 0:
                 elapsed = time.time() - cls.last_query_time
                 if elapsed >= cls.timeout_seconds:

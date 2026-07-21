@@ -457,6 +457,7 @@ with st.sidebar:
                 ui_container.empty()
                 prog_ph = ui_container.empty()
 
+                MemoryMonitor.set_busy(True)
                 try:
                     models = load_models(st.session_state.get("selected_model", list(MODEL_OPTIONS.values())[1]))
                     total_files = len(files_to_ingest)
@@ -473,6 +474,8 @@ with st.sidebar:
                         prog_ph.success(f"✅ Done — {result['total']} total chunks in knowledge base")
                 except Exception as e:
                     prog_ph.error(f"❌ Crash: {repr(e)}")
+                finally:
+                    MemoryMonitor.set_busy(False)
 
                 import time
                 time.sleep(1.5)
@@ -858,58 +861,64 @@ prompt = st.session_state.processing_prompt
 if prompt:
     # Reset idle timer since the user is actively querying
     MemoryMonitor.ping()
+    MemoryMonitor.set_busy(True)
 
-    # Load (or retrieve cached) models
     try:
-        models = load_models(selected_model)
-    except FileNotFoundError as exc:
-        st.error(str(exc))
-        st.stop()
+        # Load (or retrieve cached) models
+        try:
+            models = load_models(selected_model)
+        except FileNotFoundError as exc:
+            st.error(str(exc))
+            st.stop()
 
-    # Lazy-create the session in DB only when the first message is sent
-    if active_session_id == "temp_new_session":
-        active_session_id = create_session(selected_model)
-        st.session_state.active_session_id = active_session_id
+        # Lazy-create the session in DB only when the first message is sent
+        if active_session_id == "temp_new_session":
+            active_session_id = create_session(selected_model)
+            st.session_state.active_session_id = active_session_id
 
-    # Persist and display user message
-    add_message(active_session_id, "user", prompt)
-    with st.chat_message("user"):
-        st.markdown(prompt)
+        # Persist and display user message
+        add_message(active_session_id, "user", prompt)
+        with st.chat_message("user"):
+            st.markdown(prompt)
 
-    # Generate and stream assistant response
-    with st.chat_message("assistant"):
-        answer_placeholder = st.empty()
+        # Generate and stream assistant response
+        with st.chat_message("assistant"):
+            answer_placeholder = st.empty()
 
-        def stream_update(text: str):
-            """Updates the UI with accumulated text as tokens arrive."""
-            answer_placeholder.markdown(text + "▌")
+            def stream_update(text: str):
+                """Updates the UI with accumulated text as tokens arrive."""
+                answer_placeholder.markdown(text + "▌")
 
-        with st.spinner("Searching knowledge base..."):
-            result = answer_query(
-                question=prompt,
-                embedding_client=models["embedding_client"],
-                chat_client=models["chat_client"],
-                top_k=8,
-                stream_callback=stream_update,
-                chat_history=messages,
-            )
-
-        answer  = result["answer"]
-        sources = result["sources"]
-
-        answer_placeholder.markdown(answer)
-
-        with st.expander("📄 Sources retrieved", expanded=True):
-            for src in sources:
-                st.markdown(
-                    f"**{src['filename']}** — `{src['score'] * 100:.1f}%` match"
+            with st.spinner("Searching knowledge base..."):
+                result = answer_query(
+                    question=prompt,
+                    embedding_client=models["embedding_client"],
+                    chat_client=models["chat_client"],
+                    top_k=8,
+                    stream_callback=stream_update,
+                    chat_history=messages,
                 )
-                st.caption(src["content"][:200] + "...")
 
-    # Persist assistant response to history DB
-    add_message(active_session_id, "assistant", answer, sources=sources)
+            answer  = result["answer"]
+            sources = result["sources"]
 
-    # Refresh sidebar session names and release lock
-    st.session_state.processing_prompt = None
-    st.session_state.is_generating = False
-    st.rerun()
+            answer_placeholder.markdown(answer)
+
+            with st.expander("📄 Sources retrieved", expanded=True):
+                for src in sources:
+                    st.markdown(
+                        f"**{src['filename']}** — `{src['score'] * 100:.1f}%` match"
+                    )
+                    st.caption(src["content"][:200] + "...")
+
+        # Persist assistant response to history DB
+        add_message(active_session_id, "assistant", answer, sources=sources)
+
+        # Refresh sidebar session names and release lock
+        st.session_state.processing_prompt = None
+        st.session_state.is_generating = False
+        st.rerun()
+
+    finally:
+        MemoryMonitor.set_busy(False)
+
