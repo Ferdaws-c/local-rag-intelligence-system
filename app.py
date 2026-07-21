@@ -247,6 +247,7 @@ is_ui_locked = bool(st.session_state.get("pending_ingest")) or \
 # ------------------------------------------------------------------
 MODEL_OPTIONS = {
     "⚡ Fast — qwen2.5-0.5b (~1–2s)":       "qwen2.5-0.5b",
+    "⚖️ Balanced — phi-3.5-mini (~5–10s)":  "phi-3.5-mini",
 }
 
 
