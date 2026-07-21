@@ -125,14 +125,23 @@ def expand_query(query: str, chat_client=None, chat_history: list = None) -> str
     """
     words = query.lower().split()
     extra: list[str] = []
+    
+    # 1. Map synonyms
     for word in words:
-        # Strip trailing punctuation for matching
         clean = word.strip("?.,!;:")
         if clean in _SYNONYM_MAP:
             extra.append(_SYNONYM_MAP[clean])
-    if extra:
-        return f"{query} {' '.join(extra)}"
-    return query
+            
+    expanded = f"{query} {' '.join(extra)}".strip()
+    
+    # 2. Inject conversational context for pronoun resolution
+    # If the user asks "his students id?", the database needs to know "his" refers to Ferdaws.
+    # By injecting the last 2 messages into the search string, the embedding model finds the connection instantly without extra LLM latency.
+    if chat_history:
+        context_str = " ".join(msg["content"] for msg in chat_history[-2:])
+        expanded = f"{context_str} {expanded}"
+        
+    return expanded
 
 
 # ------------------------------------------------------------------
