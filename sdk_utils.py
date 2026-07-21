@@ -114,7 +114,8 @@ class MemoryMonitor:
         if FoundryLocalManager.instance and hasattr(FoundryLocalManager.instance, "catalog"):
             try:
                 loaded_models = FoundryLocalManager.instance.catalog.get_loaded_models()
-                for m in loaded_models:
+                # Iterate over a copy of the list because calling unload() might modify it
+                for m in list(loaded_models):
                     if hasattr(m, 'unload'):
                         m.unload()
             except Exception:
