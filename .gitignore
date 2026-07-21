@@ -28,3 +28,7 @@ Thumbs.db
 # ── Test artefacts ─────────────────────────────────────────────────
 test_results.txt
 scratch/
+
+# ── Private Source Documents ─────────────────────────────────────────
+source_documents/*
+!source_documents/.gitkeep
