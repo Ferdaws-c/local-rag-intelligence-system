@@ -39,6 +39,23 @@ div[class*="Sidebar"] {
     background-color: #0e1117 !important;
     background: #0e1117 !important;
 }
+
+/* ── LIGHT MODE OVERRIDES ── */
+[data-theme="light"] .stApp {
+    background-color: #F8F9FA !important;
+}
+[data-theme="light"] [data-testid="stSidebar"],
+[data-theme="light"] [data-testid="stSidebar"] > div,
+[data-theme="light"] [data-testid="stSidebar"] > div > div,
+[data-theme="light"] section[data-testid="stSidebar"],
+[data-theme="light"] section[data-testid="stSidebar"] > div,
+[data-theme="light"] [data-testid="stSidebarContent"],
+[data-theme="light"] [data-testid="stSidebarNav"],
+[data-theme="light"] div[class*="sidebar"],
+[data-theme="light"] div[class*="Sidebar"] {
+    background-color: #F0F2F6 !important;
+    background: #F0F2F6 !important;
+}
 </style>
 """, unsafe_allow_html=True)
 
