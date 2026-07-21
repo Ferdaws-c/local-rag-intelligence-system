@@ -222,6 +222,11 @@ def answer_query(question: str,
         for msg in chat_history[-2:]:
             messages.append({"role": msg["role"], "content": msg["content"]})
             
+    messages.append({
+        "role": "system",
+        "content": "FINAL REMINDER: You MUST output ONLY \"I don't have that information.\" if the answer is not found in the Context. Do not guess. NEVER output parenthetical notes, meta-commentary, or explanations."
+    })
+            
     messages.append({"role": "user", "content": question})
 
     # C — Stream the response with a hard token cap to prevent runaway generation
