@@ -401,7 +401,7 @@ with st.sidebar:
     selected_label = st.selectbox(
         "Chat Model",
         options=list(MODEL_OPTIONS.keys()),
-        index=1,
+        index=0,
         help="Smaller = faster. Larger = better answers.",
         disabled=is_ui_locked,
     )
