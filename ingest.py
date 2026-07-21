@@ -126,7 +126,7 @@ def load_and_chunk_documents(documents_dir: Path, target_filename: str = None) -
     If target_filename is provided, it only reads that specific file.
     """
     CHUNK_LINES   = 15   # lines per chunk
-    OVERLAP_LINES = 5    # lines shared between consecutive chunks
+    OVERLAP_LINES = 8    # lines shared between consecutive chunks (increased to prevent field-boundary splits)
 
     all_chunks = []
 
