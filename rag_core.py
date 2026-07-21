@@ -181,13 +181,12 @@ def answer_query(question: str,
         }
 
     # C — Build grounded system prompt
-    import re
     MAX_CHUNK_CHARS = 600
     context_lines = []
     for chunk in chunks:
-        # Strip the injected [Document: ...] metadata prefix so it doesn't confuse the AI
-        clean_content = re.sub(r"^\[Document:.*?\]\n", "", chunk["content"])
-        content = clean_content[:MAX_CHUNK_CHARS]
+        # Strip the injected [Document: ...] metadata prefix permanently so neither the AI nor the UI sees it
+        chunk["content"] = re.sub(r"^\[Document:.*?\]\n", "", chunk["content"])
+        content = chunk["content"][:MAX_CHUNK_CHARS]
         # Use the exact filename as the source so the AI quotes it exactly as it appears
         source = chunk["filename"]
         context_lines.append(f"--- START SOURCE: {source} ---\n{content}\n--- END SOURCE ---")
@@ -209,7 +208,8 @@ def answer_query(question: str,
         "6. Treat every word in the Context as ground truth. "
         "   Do NOT substitute, correct, or paraphrase with your own knowledge.\n"
         "7. For bilingual documents containing both Turkish and English (e.g., 'BİLGİSAYAR MÜHENDİSLİĞİ (İNGİLİZCE) (ÜCRETLİ)' and '(Computer Engineering - English, Paid)'), always use the English parenthesized translation exactly. Do NOT translate Turkish terms yourself or substitute them with different terms from your pretraining (e.g. do not turn 'Computer Engineering' / 'Paid' into 'Electrical Engineering' / 'Ücretsiz').\n"
-        "8. COMPUTATION & NUMERIC DATA RULE: NEVER perform arithmetic calculations, statistical estimates, or data transformations on numeric values. If a numeric value (e.g., a GPA, vector score, or performance metric) is explicitly stated in the provided context, quote it directly and verbatim without modification.\n\n"
+        "8. COMPUTATION & NUMERIC DATA RULE: NEVER perform arithmetic calculations, statistical estimates, or data transformations on numeric values. If a numeric value (e.g., a GPA, vector score, or performance metric) is explicitly stated in the provided context, quote it directly and verbatim without modification.\n"
+        "9. TABULAR DATA & GRADES: When asked about a specific grade, score, or course, scan the text for isolated letters (e.g., A, B+, C-, Y) or numbers next to course names. Treat these as the letter grades for those courses. If multiple matching courses exist (e.g. multiple 'programming' courses), list all of them and their corresponding grades exactly as they appear.\n\n"
         f"Context:\n{context_text}"
     )
 
