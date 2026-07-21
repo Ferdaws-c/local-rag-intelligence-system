@@ -313,14 +313,24 @@ with st.sidebar:
     # Build options list of IDs
     options_list = []
     id_to_name = {}
+    seen_names = {}
 
     if st.session_state.active_session_id == "temp_new_session":
         options_list.append("temp_new_session")
         id_to_name["temp_new_session"] = "New Chat"
+        seen_names["New Chat"] = 1
 
     for s in all_sessions:
         options_list.append(s["id"])
-        id_to_name[s["id"]] = s["name"]
+        base_name = s["name"]
+        
+        # Streamlit selectbox bug: format_func must return strictly unique strings for the UI to map clicks correctly.
+        # We append zero-width spaces (\u200b) to duplicate titles so they look identical but are technically unique.
+        count = seen_names.get(base_name, 0)
+        unique_name = base_name + ("\u200b" * count)
+        seen_names[base_name] = count + 1
+        
+        id_to_name[s["id"]] = unique_name
 
     if not options_list:
         st.caption("No chats found.")
@@ -346,7 +356,8 @@ with st.sidebar:
 
         if selected_id != "temp_new_session":
             with st.expander("Manage Chat"):
-                current_name = id_to_name.get(selected_id, "")
+                # Strip zero-width spaces for the text input so they aren't accidentally saved back to the DB
+                current_name = id_to_name.get(selected_id, "").replace("\u200b", "")
                 new_name = st.text_input("Rename", value=current_name, key=f"ren_{selected_id}", label_visibility="collapsed", disabled=is_ui_locked)
                 if st.button("Save Name", use_container_width=True, disabled=is_ui_locked):
                     if new_name.strip() and new_name.strip() != current_name:
