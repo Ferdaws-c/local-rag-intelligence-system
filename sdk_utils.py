@@ -105,22 +105,32 @@ class MemoryMonitor:
 
     @classmethod
     def force_unload(cls):
-        """Manually force all models to unload from RAM."""
+        """Manually force all models to unload from RAM and release all Python references."""
+        import gc
         from foundry_local import FoundryLocalManager
         import streamlit as st
+
+        # Step 1: Ask the Foundry SDK to unload all models from the inference engine
         if FoundryLocalManager.instance and hasattr(FoundryLocalManager.instance, "catalog"):
             try:
-                models = FoundryLocalManager.instance.catalog.get_loaded_models()
-                for m in models:
+                loaded_models = FoundryLocalManager.instance.catalog.get_loaded_models()
+                for m in loaded_models:
                     if hasattr(m, 'unload'):
                         m.unload()
             except Exception:
                 pass
-        
+
+        # Step 2: Clear Streamlit's @cache_resource dict — this drops Python's
+        # reference to the model objects stored inside the cached dict.
         try:
             st.cache_resource.clear()
         except Exception:
             pass
+
+        # Step 3: Force Python's garbage collector to run immediately so that
+        # the now-unreferenced model tensors are released back to the OS.
+        gc.collect()
+
         # Reset timer after unloading
         cls.last_query_time = time.time()
 
