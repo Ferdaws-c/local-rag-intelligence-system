@@ -191,15 +191,22 @@ def answer_query(question: str,
         }
 
     # C — Build grounded system prompt
-    MAX_CHUNK_CHARS = 800
+    MAX_CHUNK_CHARS = 550
     context_lines = []
+    seen_lines = set()
     for chunk in chunks:
         # Strip the injected [Document: ...] metadata prefix permanently so neither the AI nor the UI sees it
         chunk["content"] = re.sub(r"^\[Document:.*?\]\n", "", chunk["content"])
-        content = chunk["content"][:MAX_CHUNK_CHARS]
-        # Use the exact filename as the source so the AI quotes it exactly as it appears
-        source = chunk["filename"]
-        context_lines.append(f"--- START SOURCE: {source} ---\n{content}\n--- END SOURCE ---")
+        raw_lines = chunk["content"][:MAX_CHUNK_CHARS].splitlines()
+        clean_lines = []
+        for line in raw_lines:
+            s_line = line.strip()
+            if s_line and s_line not in seen_lines:
+                seen_lines.add(s_line)
+                clean_lines.append(line)
+        if clean_lines:
+            source = chunk["filename"]
+            context_lines.append(f"--- START SOURCE: {source} ---\n" + "\n".join(clean_lines) + "\n--- END SOURCE ---")
     context_text = "\n\n".join(context_lines)
 
     # Instead of relying on a "system" role (which many local models/templates silently drop),
@@ -228,7 +235,7 @@ def answer_query(question: str,
     # C — Stream the response with a hard token cap to prevent runaway generation
     response_parts = []
     token_count    = 0
-    MAX_TOKENS     = 200
+    MAX_TOKENS     = 100
 
     for chunk in chat_client.complete_streaming_chat(messages):
         if chunk.choices:
