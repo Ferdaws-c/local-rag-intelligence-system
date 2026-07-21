@@ -318,9 +318,15 @@ with st.sidebar:
         options_list.append("temp_new_session")
         id_to_name["temp_new_session"] = "New Chat"
 
+    name_counts = {}
     for s in all_sessions:
         options_list.append(s["id"])
-        id_to_name[s["id"]] = s["name"]
+        base_name = s["name"]
+        # Fix for Streamlit bug: identical labels in a selectbox cause frontend glitches
+        # We append invisible zero-width spaces so every label is unique to the React DOM
+        name_counts[base_name] = name_counts.get(base_name, 0) + 1
+        invisible_padding = "\u200b" * (name_counts[base_name] - 1)
+        id_to_name[s["id"]] = f"{base_name}{invisible_padding}"
 
     if not options_list:
         st.caption("No chats found.")
@@ -403,7 +409,7 @@ with st.sidebar:
     selected_timeout = st.selectbox(
         "🧹 Auto-Free Memory",
         options=list(timeout_options.keys()),
-        index=2, # Default: 5 Minutes
+        index=1, # Default: 2 Minutes
         disabled=is_ui_locked,
         help="Unloads the AI from RAM if you haven't asked a question recently."
     )

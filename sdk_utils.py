@@ -74,7 +74,7 @@ import time
 
 class MemoryMonitor:
     last_query_time = time.time()
-    timeout_seconds = 300  # Default to 5 minutes
+    timeout_seconds = 120  # Default to 2 minutes
     _thread = None
     is_busy = False
 
