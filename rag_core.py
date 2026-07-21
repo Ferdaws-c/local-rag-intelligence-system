@@ -111,6 +111,8 @@ _SYNONYM_MAP: dict[str, str] = {
     "setup": "installation configuration", "install": "installation setup",
     "password": "credentials authentication login",
     "reset": "restore factory default",
+    "project": "codebase technical software application system",
+    "projects": "codebase technical software applications systems",
 }
 
 def expand_query(query: str, chat_client=None, chat_history: list = None) -> str:
@@ -177,13 +179,16 @@ def answer_query(question: str,
         }
 
     # C — Build grounded system prompt
-    # Each chunk is prefixed with its source file name; content trimmed to keep prompt short
+    import re
     MAX_CHUNK_CHARS = 600
     context_lines = []
     for chunk in chunks:
-        source  = chunk["filename"].replace(".txt", "").replace("_", " ").title()
-        content = chunk["content"][:MAX_CHUNK_CHARS]
-        context_lines.append(f"[Source: {source}]\n{content}")
+        # Strip the injected [Document: ...] metadata prefix so it doesn't confuse the AI
+        clean_content = re.sub(r"^\[Document:.*?\]\n", "", chunk["content"])
+        content = clean_content[:MAX_CHUNK_CHARS]
+        # Use the exact filename as the source so the AI quotes it exactly as it appears
+        source = chunk["filename"]
+        context_lines.append(f"--- START SOURCE: {source} ---\n{content}\n--- END SOURCE ---")
     context_text = "\n\n".join(context_lines)
 
     system_prompt = (
