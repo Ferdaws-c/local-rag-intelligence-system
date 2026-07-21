@@ -191,7 +191,7 @@ def answer_query(question: str,
         }
 
     # C — Build grounded system prompt
-    MAX_CHUNK_CHARS = 400
+    MAX_CHUNK_CHARS = 800
     context_lines = []
     for chunk in chunks:
         # Strip the injected [Document: ...] metadata prefix permanently so neither the AI nor the UI sees it
@@ -210,7 +210,7 @@ def answer_query(question: str,
         "RULE 2: If the Context does not contain the answer, you MUST output EXACTLY: \"I don't have that information.\"\n"
         "RULE 3: NEVER guess, NEVER use outside knowledge, and NEVER calculate numbers.\n"
         "RULE 4: Always cite the [Source Name].\n"
-        "RULE 5: Do NOT output any notes, commentary, or headers.\n"
+        "RULE 5: NEVER output any notes, disclaimers, meta-commentary, or parenthesized explanations (e.g. NEVER write '(Note: ...)'). Just state the facts.\n"
         "RULE 6: Answer EXACTLY what is asked. If asked for an ID, provide the numeric ID. Assume all chunks describe the same person (e.g. resolve 'his' or 'her' to the subject of the text).\n"
         "RULE 7: Keep your answer to a MAXIMUM of 4 sentences. Be concise.\n\n"
         f"Context:\n{context_text}\n\n"
