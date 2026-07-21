@@ -201,12 +201,15 @@ def answer_query(question: str,
         "   \"I don't have that information.\"\n"
         "3. If the Context contains PARTIAL information, report only what it says "
         "   and say \"The documents don't specify\" for the missing parts.\n"
-        "4. Always cite the source document name for every fact you state "
-        "   (e.g., 'According to [Source Name]...').\n"
+        "4. Always cite the exact source filename for every fact you state "
+        "   (e.g., 'According to official_transcript.txt...').\n"
         "5. Keep your answer concise — no more than 4 sentences.\n"
         "6. Treat every word in the Context as ground truth. "
         "   Do NOT substitute, correct, or paraphrase with your own knowledge.\n"
-        "7. For bilingual documents containing both Turkish and English (e.g., 'BİLGİSAYAR MÜHENDİSLİĞİ (İNGİLİZCE) (ÜCRETLİ)' and '(Computer Engineering - English, Paid)'), always use the English parenthesized translation exactly. Do NOT translate Turkish terms yourself or substitute them with different terms from your pretraining (e.g. do not turn 'Computer Engineering' / 'Paid' into 'Electrical Engineering' / 'Ücretsiz').\n\n"
+        "7. For bilingual documents containing both Turkish and English (e.g., 'BİLGİSAYAR MÜHENDİSLİĞİ (İNGİLİZCE) (ÜCRETLİ)' and '(Computer Engineering - English, Paid)'), always use the English parenthesized translation exactly. Do NOT translate Turkish terms yourself or substitute them with different terms from your pretraining (e.g. do not turn 'Computer Engineering' / 'Paid' into 'Electrical Engineering' / 'Ücretsiz').\n"
+        "8. NEVER perform calculations, arithmetic, or derivations. "
+        "   If a numeric value (e.g. GPA, total, score) is EXPLICITLY stated in the Context, quote it DIRECTLY. "
+        "   Do NOT compute it from individual records even if you see the raw data.\n\n"
         f"Context:\n{context_text}"
     )
 
@@ -243,9 +246,15 @@ def answer_query(question: str,
                 if token_count >= MAX_TOKENS:
                     break
 
+    # Strip injected metadata tag from chunk content before returning to UI
+    clean_chunks = []
+    for c in chunks:
+        clean_content = re.sub(r"^\[Document:.*?\]\n", "", c["content"])
+        clean_chunks.append({**c, "content": clean_content})
+
     return {
         "answer":  "".join(response_parts).strip(),
-        "sources": chunks,
+        "sources": clean_chunks,
     }
 
 
