@@ -22,42 +22,24 @@ DOCUMENTS_DIR = Path(__file__).parent / "source_documents"
 import streamlit as st
 from streamlit.runtime.scriptrunner import add_script_run_ctx, get_script_run_ctx
 
-# Sidebar background: exact colors per theme, covering all mobile/desktop wrappers
+# Custom CSS to override Light Theme with the requested grey colors
+# while keeping the native Dark Mode intact and the Theme toggle visible.
 st.markdown("""
 <style>
-/* ── DARK MODE sidebar ── */
-[data-theme="dark"] [data-testid="stSidebar"],
-[data-theme="dark"] [data-testid="stSidebar"] > div,
-[data-theme="dark"] [data-testid="stSidebar"] > div > div,
-[data-theme="dark"] section[data-testid="stSidebar"],
-[data-theme="dark"] section[data-testid="stSidebar"] > div,
-[data-theme="dark"] [data-testid="stSidebarContent"],
-[data-theme="dark"] [data-testid="stSidebarNav"],
-[data-theme="dark"] div[class*="sidebar"],
-[data-theme="dark"] div[class*="Sidebar"] {
-    background-color: #0e1117 !important;
-    background: #0e1117 !important;
+[data-theme="light"] {
+    --primary-color: #4F4F4F !important;
+    --background-color: #E0E0E0 !important;
+    --secondary-background-color: #888888 !important;
+    --text-color: #111111 !important;
 }
-
-/* ── LIGHT MODE sidebar ── */
-[data-theme="light"] [data-testid="stSidebar"],
-[data-theme="light"] [data-testid="stSidebar"] > div,
-[data-theme="light"] [data-testid="stSidebar"] > div > div,
-[data-theme="light"] section[data-testid="stSidebar"],
-[data-theme="light"] section[data-testid="stSidebar"] > div,
-[data-theme="light"] [data-testid="stSidebarContent"],
-[data-theme="light"] [data-testid="stSidebarNav"],
-[data-theme="light"] div[class*="sidebar"],
-[data-theme="light"] div[class*="Sidebar"] {
-    background-color: #ffffff !important;
-    background: #ffffff !important;
+[data-theme="light"] .stApp {
+    background-color: #E0E0E0 !important;
 }
-
-/* ── Force Sidebar Scrollability ── */
-[data-testid="stSidebarContent"], 
-[data-testid="stSidebarUserContent"] {
-    overflow-y: auto !important;
-    padding-bottom: 5rem !important; /* Extra padding so the bottom selectbox isn't cut off */
+[data-theme="light"] [data-testid="stSidebar"] {
+    background-color: #888888 !important;
+}
+[data-theme="light"] [data-testid="stSidebar"] * {
+    color: #111111 !important;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -74,10 +56,6 @@ from chat_history import (
 )
 from rag_core import answer_query, init_models
 from ingest import run_ingestion, SUPPORTED_EXTENSIONS, rename_document, clear_knowledge_base
-from sdk_utils import MemoryMonitor
-
-# Start the background idle timeout watcher
-MemoryMonitor.start()
 
 # ------------------------------------------------------------------
 # Page Configuration
@@ -110,11 +88,12 @@ components.html(
     width=0,
 )
 
-# Additional UI polish
+# Solid background colors to prevent transparency bleed in light mode
 st.markdown(
     """
     <style>
     .stApp { background-color: var(--background-color); }
+    [data-testid="stSidebar"] { background-color: var(--secondary-background-color); }
     /* Base sidebar button style */
     div[data-testid="stSidebar"] .stButton > button {
         width: 100%;
@@ -318,15 +297,9 @@ with st.sidebar:
         options_list.append("temp_new_session")
         id_to_name["temp_new_session"] = "New Chat"
 
-    name_counts = {}
     for s in all_sessions:
         options_list.append(s["id"])
-        base_name = s["name"]
-        # Fix for Streamlit bug: identical labels in a selectbox cause frontend glitches
-        # We append invisible zero-width spaces so every label is unique to the React DOM
-        name_counts[base_name] = name_counts.get(base_name, 0) + 1
-        invisible_padding = "\u200b" * (name_counts[base_name] - 1)
-        id_to_name[s["id"]] = f"{base_name}{invisible_padding}"
+        id_to_name[s["id"]] = s["name"]
 
     if not options_list:
         st.caption("No chats found.")
@@ -398,25 +371,6 @@ with st.sidebar:
     st.session_state["selected_model"] = selected_model
     st.caption(f"Active: `{selected_model}`")
 
-    # ── Auto-Free Memory Setting ──
-    timeout_options = {
-        "30 Seconds": 30,
-        "2 Minutes": 120,
-        "5 Minutes": 300,
-        "30 Minutes": 1800,
-        "Keep (Don't free)": 0
-    }
-    selected_timeout = st.selectbox(
-        "🧹 Auto-Free Memory",
-        options=list(timeout_options.keys()),
-        index=1, # Default: 2 Minutes
-        disabled=is_ui_locked,
-        help="Unloads the AI from RAM if you haven't asked a question recently."
-    )
-    from sdk_utils import MemoryMonitor
-    MemoryMonitor.set_timeout(timeout_options[selected_timeout])
-
-
     st.divider()
 
     # ── Knowledge Base Management ──────────────────────────────────
@@ -463,7 +417,6 @@ with st.sidebar:
                 ui_container.empty()
                 prog_ph = ui_container.empty()
 
-                MemoryMonitor.set_busy(True)
                 try:
                     models = load_models(st.session_state.get("selected_model", list(MODEL_OPTIONS.values())[1]))
                     total_files = len(files_to_ingest)
@@ -478,11 +431,8 @@ with st.sidebar:
                             break
                     else:
                         prog_ph.success(f"✅ Done — {result['total']} total chunks in knowledge base")
-                        MemoryMonitor.force_unload()
                 except Exception as e:
                     prog_ph.error(f"❌ Crash: {repr(e)}")
-                finally:
-                    MemoryMonitor.set_busy(False)
 
                 import time
                 time.sleep(1.5)
@@ -725,7 +675,6 @@ with st.sidebar:
                 result = clear_knowledge_base(progress_callback=_clr_cb)
                 if result["status"] == "ok":
                     prog.success(f"✅ Cleared — {result['deleted']} chunks permanently deleted")
-                    MemoryMonitor.force_unload()
                 else:
                     prog.error(f"❌ {result['message']}")
             except Exception as e:
@@ -760,6 +709,7 @@ with st.sidebar:
             else:
                 st.session_state.clear_kb_confirm = True
                 st.rerun()
+
 
 # ------------------------------------------------------------------
 # Ensure an active session exists
@@ -867,66 +817,58 @@ if new_prompt and not st.session_state.is_generating:
 prompt = st.session_state.processing_prompt
 
 if prompt:
-    # Reset idle timer since the user is actively querying
-    MemoryMonitor.ping()
-    MemoryMonitor.set_busy(True)
 
+    # Load (or retrieve cached) models
     try:
-        # Load (or retrieve cached) models
-        try:
-            models = load_models(selected_model)
-        except FileNotFoundError as exc:
-            st.error(str(exc))
-            st.stop()
+        models = load_models(selected_model)
+    except FileNotFoundError as exc:
+        st.error(str(exc))
+        st.stop()
 
-        # Lazy-create the session in DB only when the first message is sent
-        if active_session_id == "temp_new_session":
-            active_session_id = create_session(selected_model)
-            st.session_state.active_session_id = active_session_id
+    # Lazy-create the session in DB only when the first message is sent
+    if active_session_id == "temp_new_session":
+        active_session_id = create_session(selected_model)
+        st.session_state.active_session_id = active_session_id
 
-        # Persist and display user message
-        add_message(active_session_id, "user", prompt)
-        with st.chat_message("user"):
-            st.markdown(prompt)
+    # Persist and display user message
+    add_message(active_session_id, "user", prompt)
+    with st.chat_message("user"):
+        st.markdown(prompt)
 
-        # Generate and stream assistant response
-        with st.chat_message("assistant"):
-            answer_placeholder = st.empty()
+    # Generate and stream assistant response
+    with st.chat_message("assistant"):
+        answer_placeholder = st.empty()
 
-            def stream_update(text: str):
-                """Updates the UI with accumulated text as tokens arrive."""
-                answer_placeholder.markdown(text + "▌")
+        def stream_update(text: str):
+            """Updates the UI with accumulated text as tokens arrive."""
+            answer_placeholder.markdown(text + "▌")
 
-            with st.spinner("Searching knowledge base..."):
-                result = answer_query(
-                    question=prompt,
-                    embedding_client=models["embedding_client"],
-                    chat_client=models["chat_client"],
-                    top_k=8,
-                    stream_callback=stream_update,
-                    chat_history=messages,
+        with st.spinner("Searching knowledge base..."):
+            result = answer_query(
+                question=prompt,
+                embedding_client=models["embedding_client"],
+                chat_client=models["chat_client"],
+                top_k=8,
+                stream_callback=stream_update,
+                chat_history=messages,
+            )
+
+        answer  = result["answer"]
+        sources = result["sources"]
+
+        answer_placeholder.markdown(answer)
+
+        with st.expander("📄 Sources retrieved", expanded=True):
+            for src in sources:
+                st.markdown(
+                    f"**{src['filename']}** — `{src['score'] * 100:.1f}%` match"
                 )
+                st.caption(src["content"][:200] + "...")
 
-            answer  = result["answer"]
-            sources = result["sources"]
+    # Persist assistant response to history DB
+    add_message(active_session_id, "assistant", answer, sources=sources)
 
-            answer_placeholder.markdown(answer)
-
-            with st.expander("📄 Sources retrieved", expanded=True):
-                for src in sources:
-                    st.markdown(
-                        f"**{src['filename']}** — `{src['score'] * 100:.1f}%` match"
-                    )
-                    st.caption(src["content"][:200] + "...")
-
-        # Persist assistant response to history DB
-        add_message(active_session_id, "assistant", answer, sources=sources)
-
-        # Refresh sidebar session names and release lock
-        st.session_state.processing_prompt = None
-        st.session_state.is_generating = False
-        st.rerun()
-
-    finally:
-        MemoryMonitor.set_busy(False)
-
+    # Refresh sidebar session names and release lock
+    st.session_state.processing_prompt = None
+    st.session_state.is_generating = False
+    st.rerun()
