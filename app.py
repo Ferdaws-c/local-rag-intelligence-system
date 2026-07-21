@@ -392,6 +392,25 @@ with st.sidebar:
     st.session_state["selected_model"] = selected_model
     st.caption(f"Active: `{selected_model}`")
 
+    # ── Auto-Free Memory Setting ──
+    timeout_options = {
+        "30 Seconds": 30,
+        "2 Minutes": 120,
+        "5 Minutes": 300,
+        "30 Minutes": 1800,
+        "Keep (Don't free)": 0
+    }
+    selected_timeout = st.selectbox(
+        "🧹 Auto-Free Memory",
+        options=list(timeout_options.keys()),
+        index=2, # Default: 5 Minutes
+        disabled=is_ui_locked,
+        help="Unloads the AI from RAM if you haven't asked a question recently."
+    )
+    from sdk_utils import MemoryMonitor
+    MemoryMonitor.set_timeout(timeout_options[selected_timeout])
+
+
     st.divider()
 
     # ── Knowledge Base Management ──────────────────────────────────
@@ -730,23 +749,6 @@ with st.sidebar:
             else:
                 st.session_state.clear_kb_confirm = True
                 st.rerun()
-
-        timeout_options = {
-            "30 Seconds": 30,
-            "2 Minutes": 120,
-            "5 Minutes": 300,
-            "30 Minutes": 1800,
-            "Keep (Don't free)": 0
-        }
-        selected_timeout = st.selectbox(
-            "🧹 Auto-Free Memory",
-            options=list(timeout_options.keys()),
-            index=2, # Default: 5 Minutes
-            disabled=is_ui_locked,
-            help="Unloads the AI from RAM if you haven't asked a question recently."
-        )
-        MemoryMonitor.set_timeout(timeout_options[selected_timeout])
-
 
 # ------------------------------------------------------------------
 # Ensure an active session exists
