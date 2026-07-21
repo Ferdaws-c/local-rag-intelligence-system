@@ -16,6 +16,7 @@ import sqlite3
 from pathlib import Path
 
 from sdk_utils import init_sdk, load_model
+import streamlit as st
 
 # ------------------------------------------------------------------
 # Configuration
@@ -44,24 +45,25 @@ def cosine_similarity(vec_a: list[float], vec_b: list[float]) -> float:
 # ------------------------------------------------------------------
 # Retrieval
 # ------------------------------------------------------------------
+@st.cache_data(ttl=30)
 def get_top_chunks(query: str,
-                   embedding_client,
+                   _embedding_client,
                    top_k: int = 8) -> list[dict]:
     """
     Embeds the query, fetches all stored vectors from SQLite, ranks
     them by cosine similarity, and returns the top_k matches.
 
     Parameters:
-        query            : The user's natural-language question.
-        embedding_client : Active Foundry Local embedding client.
-        top_k            : Number of top-scoring chunks to return.
+        query             : The user's natural-language question.
+        _embedding_client : Active Foundry Local embedding client (ignored by cache).
+        top_k             : Number of top-scoring chunks to return.
 
     Returns:
         List of dicts sorted by score descending:
         [{"id": int, "filename": str, "content": str, "score": float}, ...]
     """
     # Embed the query into a vector
-    query_response = embedding_client.generate_embeddings([query])
+    query_response = _embedding_client.generate_embeddings([query])
     query_vector   = query_response.data[0].embedding
 
     # Fetch all stored chunks and their embedding vectors
@@ -201,15 +203,13 @@ def answer_query(question: str,
         "   \"I don't have that information.\"\n"
         "3. If the Context contains PARTIAL information, report only what it says "
         "   and say \"The documents don't specify\" for the missing parts.\n"
-        "4. Always cite the exact source filename for every fact you state "
-        "   (e.g., 'According to official_transcript.txt...').\n"
+        "4. Always cite the source document name for every fact you state "
+        "   (e.g., 'According to [Source Name]...').\n"
         "5. Keep your answer concise — no more than 4 sentences.\n"
         "6. Treat every word in the Context as ground truth. "
         "   Do NOT substitute, correct, or paraphrase with your own knowledge.\n"
         "7. For bilingual documents containing both Turkish and English (e.g., 'BİLGİSAYAR MÜHENDİSLİĞİ (İNGİLİZCE) (ÜCRETLİ)' and '(Computer Engineering - English, Paid)'), always use the English parenthesized translation exactly. Do NOT translate Turkish terms yourself or substitute them with different terms from your pretraining (e.g. do not turn 'Computer Engineering' / 'Paid' into 'Electrical Engineering' / 'Ücretsiz').\n"
-        "8. NEVER perform calculations, arithmetic, or derivations. "
-        "   If a numeric value (e.g. GPA, total, score) is EXPLICITLY stated in the Context, quote it DIRECTLY. "
-        "   Do NOT compute it from individual records even if you see the raw data.\n\n"
+        "8. COMPUTATION & NUMERIC DATA RULE: NEVER perform arithmetic calculations, statistical estimates, or data transformations on numeric values. If a numeric value (e.g., a GPA, vector score, or performance metric) is explicitly stated in the provided context, quote it directly and verbatim without modification.\n\n"
         f"Context:\n{context_text}"
     )
 
@@ -246,15 +246,9 @@ def answer_query(question: str,
                 if token_count >= MAX_TOKENS:
                     break
 
-    # Strip injected metadata tag from chunk content before returning to UI
-    clean_chunks = []
-    for c in chunks:
-        clean_content = re.sub(r"^\[Document:.*?\]\n", "", c["content"])
-        clean_chunks.append({**c, "content": clean_content})
-
     return {
         "answer":  "".join(response_parts).strip(),
-        "sources": clean_chunks,
+        "sources": chunks,
     }
 
 
