@@ -207,6 +207,12 @@ def answer_query(question: str,
 
     messages = [{"role": "system", "content": system_prompt}]
     
+    # Few-shot examples to force small models (e.g. 0.5B) to adhere to the refusal rule
+    messages.append({"role": "user", "content": "What is the capital of France?"})
+    messages.append({"role": "assistant", "content": "I don't have that information."})
+    messages.append({"role": "user", "content": "Who is the CEO of Google?"})
+    messages.append({"role": "assistant", "content": "I don't have that information."})
+    
     if chat_history:
         # Append the last few messages for conversational memory
         for msg in chat_history[-6:]:
