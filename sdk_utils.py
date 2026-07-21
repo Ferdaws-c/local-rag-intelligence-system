@@ -106,6 +106,27 @@ class MemoryMonitor:
         cls.ping()
 
     @classmethod
+    def force_unload(cls):
+        """Manually force all models to unload from RAM."""
+        from foundry_local import FoundryLocalManager
+        import streamlit as st
+        if FoundryLocalManager.instance and hasattr(FoundryLocalManager.instance, "catalog"):
+            try:
+                models = FoundryLocalManager.instance.catalog.get_loaded_models()
+                for m in models:
+                    if hasattr(m, 'unload'):
+                        m.unload()
+            except Exception:
+                pass
+        
+        try:
+            st.cache_resource.clear()
+        except Exception:
+            pass
+        # Reset timer after unloading
+        cls.last_query_time = time.time()
+
+    @classmethod
     def _watchdog(cls):
         """Background loop that checks for idle expiration."""
         while True:
@@ -118,21 +139,7 @@ class MemoryMonitor:
                 elapsed = time.time() - cls.last_query_time
                 if elapsed >= cls.timeout_seconds:
                     # Time has expired, unload models
-                    if FoundryLocalManager.instance and hasattr(FoundryLocalManager.instance, "catalog"):
-                        try:
-                            models = FoundryLocalManager.instance.catalog.get_loaded_models()
-                            for m in models:
-                                if hasattr(m, 'unload'):
-                                    m.unload()
-                        except Exception:
-                            pass
-                    
-                    # Clear Streamlit cache safely from background thread
-                    try:
-                        import streamlit as st
-                        st.cache_resource.clear()
-                    except Exception:
-                        pass
+                    cls.force_unload()
                     
                     # Reset timer so we don't spam unload in a loop
                     cls.last_query_time = time.time()

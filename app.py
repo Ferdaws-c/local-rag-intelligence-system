@@ -472,6 +472,7 @@ with st.sidebar:
                             break
                     else:
                         prog_ph.success(f"✅ Done — {result['total']} total chunks in knowledge base")
+                        MemoryMonitor.force_unload()
                 except Exception as e:
                     prog_ph.error(f"❌ Crash: {repr(e)}")
                 finally:
@@ -718,6 +719,7 @@ with st.sidebar:
                 result = clear_knowledge_base(progress_callback=_clr_cb)
                 if result["status"] == "ok":
                     prog.success(f"✅ Cleared — {result['deleted']} chunks permanently deleted")
+                    MemoryMonitor.force_unload()
                 else:
                     prog.error(f"❌ {result['message']}")
             except Exception as e:
