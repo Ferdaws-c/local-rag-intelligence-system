@@ -25,7 +25,7 @@ from streamlit.runtime.scriptrunner import add_script_run_ctx, get_script_run_ct
 # Theme & mobile sidebar fix — CSS reinforces default theme background to prevent transparency
 st.markdown("""
 <style>
-/* ── SIDEBAR: every wrapper Streamlit might use on desktop + mobile ── */
+/* ── SIDEBAR DARK MODE: every wrapper Streamlit might use on desktop + mobile ── */
 [data-testid="stSidebar"],
 [data-testid="stSidebar"] > div,
 [data-testid="stSidebar"] > div > div,
@@ -40,10 +40,7 @@ div[class*="Sidebar"] {
     background: #0e1117 !important;
 }
 
-/* ── LIGHT MODE OVERRIDES ── */
-[data-theme="light"] .stApp {
-    background-color: #F8F9FA !important;
-}
+/* ── SIDEBAR LIGHT MODE: off-white background ── */
 [data-theme="light"] [data-testid="stSidebar"],
 [data-theme="light"] [data-testid="stSidebar"] > div,
 [data-theme="light"] [data-testid="stSidebar"] > div > div,
@@ -53,8 +50,8 @@ div[class*="Sidebar"] {
 [data-theme="light"] [data-testid="stSidebarNav"],
 [data-theme="light"] div[class*="sidebar"],
 [data-theme="light"] div[class*="Sidebar"] {
-    background-color: #F0F2F6 !important;
-    background: #F0F2F6 !important;
+    background-color: #F5F5F0 !important;
+    background: #F5F5F0 !important;
 }
 </style>
 """, unsafe_allow_html=True)
