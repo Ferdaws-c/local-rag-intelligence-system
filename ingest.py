@@ -202,11 +202,11 @@ def load_and_chunk_documents(documents_dir: Path, target_filename: str = None) -
 # ------------------------------------------------------------------
 # Embedding Generation
 # ------------------------------------------------------------------
-def generate_embeddings(chunks: list[dict], embedding_client, batch_size: int = 64) -> list[dict]:
+def generate_embeddings(chunks: list[dict], embedding_client, batch_size: int = 128, progress_callback=None) -> list[dict]:
     """
-    Sends chunk texts to the embedding model in sub-batches of 64
+    Sends chunk texts to the embedding model in sub-batches of 128
     and attaches the resulting vectors back to each chunk dict.
-    Pings MemoryMonitor during each batch to prevent idle timeouts during large ingestions.
+    Updates progress_callback live and pings MemoryMonitor during each batch.
 
     Returns:
         The same list with an 'embedding' key added to each dict.
@@ -226,6 +226,13 @@ def generate_embeddings(chunks: list[dict], embedding_client, batch_size: int = 
             MemoryMonitor.ping()
         except Exception:
             pass
+
+        if progress_callback and total > 0:
+            pct = 0.30 + 0.58 * (start_idx / total)
+            try:
+                progress_callback(pct, f"Embedding chunk {start_idx}/{total} ({int(start_idx/total*100)}%)...")
+            except Exception:
+                pass
 
         batch_texts = texts[start_idx : start_idx + batch_size]
         response = embedding_client.generate_embeddings(batch_texts)
@@ -388,7 +395,7 @@ def run_ingestion(embedding_client, progress_callback=None, target_file=None, is
         chunks = load_and_chunk_documents(DOCUMENTS_DIR, target_filename=target_file)
 
         _report(0.30, f"Generating embeddings for {len(chunks)} chunks…")
-        chunks = generate_embeddings(chunks, embedding_client)
+        chunks = generate_embeddings(chunks, embedding_client, progress_callback=_report)
 
         _report(0.88, "Writing to database…")
         # If updating a single file, clear its old chunks first
