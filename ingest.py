@@ -17,7 +17,7 @@ import sqlite3
 import time
 from pathlib import Path
 
-from sdk_utils import init_sdk, load_model
+from sdk_utils import init_sdk, load_model, UNIFIED_APP_NAME
 
 # ------------------------------------------------------------------
 # Configuration — all paths relative to this file's location
@@ -385,7 +385,7 @@ def main():
 
     # 1. Initialize SDK and load embedding model
     print("\n[1/4] Loading embedding model...")
-    manager          = init_sdk("local_rag_assistant")
+    manager          = init_sdk(UNIFIED_APP_NAME)
     embedding_model  = load_model(manager, EMBEDDING_MODEL, "embedding model")
     embedding_client = embedding_model.get_embedding_client()
 

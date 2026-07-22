@@ -21,7 +21,7 @@ import sys
 from pathlib import Path
 from datetime import datetime
 
-from sdk_utils import init_sdk, load_model
+from sdk_utils import init_sdk, load_model, UNIFIED_APP_NAME
 from rag_core import answer_query
 
 # ------------------------------------------------------------------
@@ -232,7 +232,7 @@ def main():
 
     # Load models
     print(f"\nLoading models...")
-    manager          = init_sdk("local_rag_assistant")
+    manager          = init_sdk(UNIFIED_APP_NAME)
     embedding_model  = load_model(manager, EMBEDDING_MODEL, "embedding model")
     embedding_client = embedding_model.get_embedding_client()
     chat_model       = load_model(manager, CHAT_MODEL, "chat model")

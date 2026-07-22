@@ -11,23 +11,24 @@ Usage:
 from foundry_local_sdk import Configuration, FoundryLocalManager
 
 
-def init_sdk(app_name: str) -> FoundryLocalManager:
-    """
-    Initializes the Foundry Local SDK singleton and registers GPU execution providers
-    if available.
+UNIFIED_APP_NAME = "local_rag_assistant"
 
-    Safe to call multiple times — if the SDK is already initialized
-    (e.g., when Streamlit hot-reloads or switches models in the same
-    process), the existing instance is returned without error.
+
+def init_sdk(app_name: str = UNIFIED_APP_NAME) -> FoundryLocalManager:
+    """
+    Initializes the Foundry Local SDK singleton using UNIFIED_APP_NAME ("local_rag_assistant").
+    Unified app_name prevents disk space duplication under ~/.<app_name>/ and shares all
+    downloaded model weights and CUDA execution providers across all application scripts.
 
     Parameters:
-        app_name : Identifier registered with the Foundry Local service.
+        app_name : Identifier registered with the Foundry Local service (defaults to UNIFIED_APP_NAME).
 
     Returns:
         The active FoundryLocalManager singleton instance.
     """
+    target_app_name = app_name if app_name else UNIFIED_APP_NAME
     try:
-        config = Configuration(app_name=app_name)
+        config = Configuration(app_name=target_app_name)
         FoundryLocalManager.initialize(config)
     except Exception as exc:
         # Silently ignore "already initialized" — all other exceptions re-raised.
