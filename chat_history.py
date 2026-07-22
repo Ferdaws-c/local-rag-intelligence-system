@@ -53,8 +53,43 @@ def init_history_db() -> None:
         )
     """)
 
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS app_settings (
+            key   TEXT PRIMARY KEY,
+            value TEXT NOT NULL
+        )
+    """)
+
     conn.commit()
     conn.close()
+
+
+def get_setting(key: str, default: str = "") -> str:
+    """Retrieves a persisted configuration setting from chat_history.db."""
+    try:
+        conn = sqlite3.connect(HISTORY_DB)
+        cursor = conn.cursor()
+        cursor.execute("SELECT value FROM app_settings WHERE key = ?", (key,))
+        row = cursor.fetchone()
+        conn.close()
+        return row[0] if row else default
+    except Exception:
+        return default
+
+
+def set_setting(key: str, value: str) -> None:
+    """Saves or updates a configuration setting in chat_history.db."""
+    try:
+        conn = sqlite3.connect(HISTORY_DB)
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO app_settings (key, value) VALUES (?, ?)
+            ON CONFLICT(key) DO UPDATE SET value = excluded.value
+        """, (key, value))
+        conn.commit()
+        conn.close()
+    except Exception:
+        pass
 
 
 # ------------------------------------------------------------------

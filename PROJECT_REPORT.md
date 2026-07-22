@@ -28,7 +28,7 @@ The system architecture was designed around the principles of RAG to ground the 
 The project was executed in four primary phases:
 
 ### 4.1 Data Ingestion (`ingest.py`)
-A custom ingestion pipeline was built to process five source documents (`official_transcript.txt`, `academic_and_experience.txt`, etc.). The script chunks the text into paragraph-level segments to balance context completeness with retrieval precision. Each chunk is passed to the Foundry Local embedding model and stored in a SQLite database (`knowledge_base.db`) alongside its vector representation.
+A custom ingestion pipeline was built to process five source documents (`official_transcript.docx`, `academic_and_experience.docx`, etc.). The script chunks the text into paragraph-level segments to balance context completeness with retrieval precision. Each chunk is passed to the Foundry Local embedding model and stored in a SQLite database (`knowledge_base.db`) alongside its vector representation.
 
 ### 4.2 Semantic Retrieval (`rag_core.py`)
 When a user submits a query via the UI, the text is immediately embedded. The system retrieves all stored vectors from the SQLite database and calculates the cosine similarity against the query vector. The top 5 most relevant chunks (highest similarity scores) are retrieved to form the context window.

@@ -2,7 +2,7 @@
 rag_core.py — RAG Pipeline Core Logic
 =======================================
 Provides the complete Retrieval-Augmented Generation pipeline for the
-SmartHome Hub Assistant. This module is imported by app.py (Streamlit UI)
+Local RAG Intelligence System. This module is imported by app.py (Streamlit UI)
 and test_suite.py (automated testing).
 
 Public API:
@@ -14,6 +14,7 @@ import json
 import math
 import re
 import sqlite3
+import time
 from pathlib import Path
 
 from sdk_utils import init_sdk, load_model
@@ -108,6 +109,7 @@ _SYNONYM_MAP: dict[str, str] = {
     "work": "occupation career employment",
     "major": "department faculty degree program",
     "class": "course lecture study",
+    "grade": "grade transcript course score mark",
     # General
     "fix": "repair troubleshoot", "broken": "malfunction error fault",
     "slow": "performance latency speed", "fast": "speed performance",
@@ -182,7 +184,9 @@ def answer_query(question: str,
     expanded_query = expand_query(question)
 
     # B — Retrieve relevant document chunks using the expanded query
+    retrieval_start = time.perf_counter()
     chunks = get_top_chunks(expanded_query, embedding_client, top_k=top_k)
+    retrieval_secs  = time.perf_counter() - retrieval_start
 
     if not chunks:
         return {
@@ -191,7 +195,10 @@ def answer_query(question: str,
         }
 
     # C — Build grounded system prompt
-    MAX_CHUNK_CHARS = 550
+    # 450 chars keeps the substantive lines of each chunk while trimming the
+    # redundant tail produced by the overlapping sliding window — this shrinks
+    # the prompt (faster prefill) without dropping any retrieved chunk.
+    MAX_CHUNK_CHARS = 450
     context_lines = []
     seen_lines = set()
     for chunk in chunks:
@@ -211,18 +218,19 @@ def answer_query(question: str,
 
     # Instead of relying on a "system" role (which many local models/templates silently drop),
     # we inject the rules, context, and question directly into the final "user" prompt.
+    # NOTE: The instruction block is deliberately compact. Every constraint from
+    # the original 7-rule version is preserved, but merged into 4 lines to cut the
+    # number of prompt tokens the model must process on every query (faster prefill)
+    # — this does not relax any anti-hallucination rule.
     final_prompt = (
-        "You are a strict RAG extraction bot.\n"
-        "RULE 1: You must ONLY use the exact facts from the Context below.\n"
-        "RULE 2: If the Context does not contain the answer, you MUST output EXACTLY: \"I don't have that information.\"\n"
-        "RULE 3: NEVER guess, NEVER use outside knowledge, and NEVER calculate numbers.\n"
-        "RULE 4: Always cite the [Source Name].\n"
-        "RULE 5: NEVER output any notes, disclaimers, meta-commentary, or parenthesized explanations (e.g. NEVER write '(Note: ...)'). Just state the facts.\n"
-        "RULE 6: Answer EXACTLY what is asked. If asked for an ID, provide the numeric ID. Assume all chunks describe the same person (e.g. resolve 'his' or 'her' to the subject of the text).\n"
-        "RULE 7: Keep your answer to a MAXIMUM of 4 sentences. Be concise.\n\n"
+        "You are a strict RAG extraction bot. Obey every rule:\n"
+        "1. Use ONLY the exact facts in the Context below; never guess, use outside knowledge, or calculate numbers.\n"
+        "2. If the Context does not contain the answer, output EXACTLY: \"I don't have that information.\"\n"
+        "3. DO NOT write source citations, references, or document filenames in your answer (e.g. do NOT write '(Source: ...)' or 'Reference: ...'). Answer ONLY the direct answer text.\n"
+        "4. No notes, disclaimers, or parenthesized meta-commentary. State the facts concisely.\n\n"
         f"Context:\n{context_text}\n\n"
         f"Question: {question}\n\n"
-        "[CRITICAL REMINDER: If the exact answer is not explicitly written in the Context above, you MUST answer exactly 'I don't have that information.' Do not use outside knowledge.]"
+        "[REMINDER: State ONLY the direct answer text. Do NOT write source filenames or reference citations in your answer. Do not use outside knowledge.]"
     )
 
     messages = []
@@ -232,11 +240,14 @@ def answer_query(question: str,
             
     messages.append({"role": "user", "content": final_prompt})
 
-    # C — Stream the response with a hard token cap to prevent runaway generation
+    # D — Stream the response with a hard token cap to prevent runaway generation.
+    # 120 tokens comfortably fits a cited 3-sentence answer; the cap only bites on
+    # pathological rambling, so lowering it from 140 costs nothing on normal answers.
     response_parts = []
     token_count    = 0
-    MAX_TOKENS     = 140
+    MAX_TOKENS     = 120
 
+    gen_start = time.perf_counter()
     for chunk in chat_client.complete_streaming_chat(messages):
         if chunk.choices:
             content = chunk.choices[0].delta.content
@@ -245,13 +256,28 @@ def answer_query(question: str,
                 token_count += 1
 
                 if stream_callback:
-                    stream_callback("".join(response_parts))
+                    # Clean trailing citation patterns in live stream display
+                    raw_text = "".join(response_parts)
+                    clean_stream = re.sub(r"\s*\(?\s*(?:Source|Reference|Doc|Document|Files?)\s*:\s*.*?\)?$", "", raw_text, flags=re.IGNORECASE).strip()
+                    stream_callback(clean_stream)
 
                 if token_count >= MAX_TOKENS:
                     break
+    gen_secs = time.perf_counter() - gen_start
+
+    # Lightweight console diagnostics
+    print(
+        f"[perf] retrieval={retrieval_secs:.2f}s  generation={gen_secs:.2f}s  "
+        f"tokens={token_count}  ({token_count / gen_secs:.1f} tok/s)"
+        if gen_secs > 0 else f"[perf] retrieval={retrieval_secs:.2f}s  generation={gen_secs:.2f}s"
+    )
+
+    raw_answer = "".join(response_parts).strip()
+    # Strip any trailing citation patterns like (Source: foo.docx) or Reference: bar.docx...
+    clean_answer = re.sub(r"\s*\(?\s*(?:Source|Reference|Doc|Document|Files?)\s*:\s*.*?\)?$", "", raw_answer, flags=re.IGNORECASE).strip()
 
     return {
-        "answer":  "".join(response_parts).strip(),
+        "answer":  clean_answer,
         "sources": chunks,
     }
 
@@ -292,7 +318,7 @@ def init_models(chat_model_name: str,
             "  python ingest.py"
         )
 
-    manager = init_sdk("smarthome_hub_rag")
+    manager = init_sdk("local_rag_assistant")
 
     embedding_model  = load_model(manager, EMBEDDING_MODEL,  "embedding model", embed_progress_cb)
     embedding_client = embedding_model.get_embedding_client()

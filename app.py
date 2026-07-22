@@ -96,8 +96,7 @@ st.set_page_config(
 )
 
 # Disable the annoying 'c' (clear cache) and 'r' (rerun) keyboard shortcuts
-import streamlit.components.v1 as components
-components.html(
+st.html(
     """
     <script>
     const parentDoc = window.parent.document;
@@ -112,9 +111,7 @@ components.html(
         }
     }, true);
     </script>
-    """,
-    height=0,
-    width=0,
+    """
 )
 
 # Additional UI polish
@@ -246,7 +243,9 @@ is_ui_locked = bool(st.session_state.get("pending_ingest")) or \
 # Cached Model Loading
 # ------------------------------------------------------------------
 MODEL_OPTIONS = {
-    "⚖️ Balanced — phi-3.5-mini (~5–10s)":  "phi-3.5-mini",
+    "⚖️ Balanced — phi-3.5-mini (recommended)":  "phi-3.5-mini",
+    "🚀 Fastest — qwen2.5-0.5b (lower quality)":  "qwen2.5-0.5b",
+    "🎯 Highest quality — phi-4-mini (slowest)":  "phi-4-mini",
 }
 
 
@@ -257,7 +256,7 @@ def load_models(chat_model_name: str) -> dict:
     Cached per model name — only runs once per model per process lifetime.
     """
     status_ph = st.empty()
-    with status_ph.status("🔄 Loading AI Models...", expanded=True) as status:
+    with status_ph.status("🔄 Initializing SDK & Loading AI Models (GPU acceleration setup takes ~6-7 min on process startup)...", expanded=True) as status:
         ctx      = get_script_run_ctx()
         embed_ui = st.empty()
         chat_ui  = st.empty()
@@ -279,10 +278,28 @@ def load_models(chat_model_name: str) -> dict:
             embed_progress_cb=embed_cb,
             chat_progress_cb=chat_cb,
         )
-        status.update(label="✅ All models loaded and ready!", state="complete", expanded=False)
+        if status is not None:
+            status.update(label="✅ All models loaded and ready!", state="complete", expanded=False)
 
     status_ph.empty()
     return result
+
+
+def get_active_models(chat_model_name: str) -> dict:
+    """
+    Retrieves models from cache and performs a self-healing check.
+    If models were offloaded from C++ memory by MemoryMonitor, forces a cache invalidation & reload.
+    """
+    models = load_models(chat_model_name)
+    emb_model = models.get("embedding_model")
+    chat_model = models.get("chat_model")
+
+    # Self-healing verification: if C++ engine unloaded models, clear cache and re-initialize
+    if not (emb_model and getattr(emb_model, "is_loaded", False) and chat_model and getattr(chat_model, "is_loaded", False)):
+        load_models.clear()
+        models = load_models(chat_model_name)
+
+    return models
 
 
 # ------------------------------------------------------------------
@@ -412,6 +429,7 @@ with st.sidebar:
     st.caption(f"Active: `{selected_model}`")
 
     # ── Auto-Free Memory Setting ──
+    from chat_history import get_setting, set_setting
     timeout_options = {
         "30 Seconds": 30,
         "2 Minutes": 120,
@@ -419,15 +437,61 @@ with st.sidebar:
         "30 Minutes": 1800,
         "Keep (Don't free)": 0
     }
+    saved_timeout_label = get_setting("auto_free_timeout_label", "2 Minutes")
+    saved_index = list(timeout_options.keys()).index(saved_timeout_label) if saved_timeout_label in timeout_options else 1
+
     selected_timeout = st.selectbox(
         "🧹 Auto-Free Memory",
         options=list(timeout_options.keys()),
-        index=1, # Default: 2 Minutes
+        index=saved_index,
         disabled=is_ui_locked,
         help="Unloads the AI from RAM if you haven't asked a question recently."
     )
+    if selected_timeout != saved_timeout_label:
+        set_setting("auto_free_timeout_label", selected_timeout)
+
     from sdk_utils import MemoryMonitor
     MemoryMonitor.set_timeout(timeout_options[selected_timeout])
+    MemoryMonitor.start()
+
+    if st.button("⚡ Free Memory Now", key="free_mem_btn", use_container_width=True, disabled=is_ui_locked, help="Forcefully unload models and release RAM/VRAM back to OS immediately"):
+        with st.spinner("Unloading models & trimming RAM..."):
+            # 1. Clear function-level Streamlit resource caches
+            try:
+                load_models.clear()
+            except Exception:
+                pass
+            try:
+                from rag_core import get_top_chunks
+                get_top_chunks.clear()
+            except Exception:
+                pass
+
+            # 2. Clear global Streamlit caches & session references
+            st.cache_resource.clear()
+            st.cache_data.clear()
+            for k in list(st.session_state.keys()):
+                if any(x in k.lower() for x in ("model", "client", "embed", "chat")):
+                    if k not in ("selected_model", "chat_history_selectbox"):
+                        try:
+                            del st.session_state[k]
+                        except Exception:
+                            pass
+
+            # 3. Trigger deep C++ model offloading & OS working set trim
+            stats = MemoryMonitor.unload_now()
+            freed_mb = stats.get("freed_mb", 0.0)
+            after_mb = stats.get("after_mb", 0.0)
+            models_unloaded = stats.get("models_unloaded", 0)
+
+            st.toast(f"✅ Freed {freed_mb:.1f} MB! RAM now {after_mb:.1f} MB", icon="🧹")
+            st.success(f"✅ Memory Offloaded — Unloaded {models_unloaded} model variant(s). Process RAM trimmed to {after_mb:.1f} MB (Freed {freed_mb:.1f} MB).")
+            import time
+            time.sleep(0.5)
+            st.rerun()
+
+
+
 
 
     st.divider()
@@ -886,9 +950,9 @@ if prompt:
     MemoryMonitor.set_busy(True)
 
     try:
-        # Load (or retrieve cached) models
+        # Load (or retrieve cached/reloaded) models
         try:
-            models = load_models(selected_model)
+            models = get_active_models(selected_model)
         except FileNotFoundError as exc:
             st.error(str(exc))
             st.stop()

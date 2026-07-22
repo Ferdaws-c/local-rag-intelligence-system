@@ -380,12 +380,12 @@ def run_ingestion(embedding_client, progress_callback=None, target_file=None, is
 # ------------------------------------------------------------------
 def main():
     print("=" * 50)
-    print("  SmartHome Hub — Ingestion Pipeline")
+    print("  Local RAG Intelligence System — Ingestion Pipeline")
     print("=" * 50)
 
     # 1. Initialize SDK and load embedding model
     print("\n[1/4] Loading embedding model...")
-    manager          = init_sdk("smarthome_hub_rag")
+    manager          = init_sdk("local_rag_assistant")
     embedding_model  = load_model(manager, EMBEDDING_MODEL, "embedding model")
     embedding_client = embedding_model.get_embedding_client()
 

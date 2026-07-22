@@ -1,61 +1,58 @@
-# 🎓 Ferdaws Qaem — Local RAG Assistant
+# 🎓 Local RAG Intelligence System
 
-A fully offline AI-powered Q&A assistant for Ferdaws Qaem's Academic and Professional Profile, built using **Retrieval-Augmented Generation (RAG)** and **Microsoft Foundry Local**. All AI inference runs entirely on your local machine — no cloud, no API keys, no internet required.
+An advanced, 100% offline AI-powered Q&A assistant built using **Retrieval-Augmented Generation (RAG)** and **Microsoft Foundry Local**. All AI inference and vector searches run entirely on-device with CUDA GPU acceleration — no cloud API keys or internet connection required.
 
 ---
 
 ## 📋 Table of Contents
 - [What Is This?](#what-is-this)
-- [How It Works](#how-it-works)
+- [Key Features](#key-features)
+- [Architecture & Memory Engine](#architecture--memory-engine)
 - [Project Structure](#project-structure)
-- [Setup Instructions](#setup-instructions)
-- [Running the App](#running-the-app)
-- [Running the Tests](#running-the-tests)
-- [Design Decisions](#design-decisions)
-- [Limitations](#limitations)
-- [References](#references)
+- [Setup & Installation](#setup--installation)
+- [Running the Application](#running-the-application)
+- [Automated Testing](#automated-testing)
+- [Performance & Hardware Requirements](#performance--hardware-requirements)
+- [License](#license)
 
 ---
 
 ## What Is This?
 
-This project is the final deliverable for the **Local AI with Microsoft Foundry Local** summer school program. It demonstrates how to build a production-quality RAG application from scratch using:
-
-- **Microsoft Foundry Local** to run LLMs and embedding models entirely on-device
-- **SQLite** as a lightweight vector store
-- **Cosine similarity** for semantic document retrieval
-- **Streamlit** for a clean, interactive web UI
-
-The assistant can answer questions about Ferdaws Qaem's academic background, work experience, and technical skills by searching through a local knowledge base of 5 profile documents and grounding every answer in real retrieved text.
+This project is a production-grade local RAG application that combines:
+- **Microsoft Foundry Local SDK** for running LLMs (`phi-3.5-mini`, `phi-4-mini`, `qwen2.5-0.5b`) and embedding models (`qwen3-embedding-0.6b`) on CUDA GPU acceleration.
+- **SQLite Vector Store** with cosine similarity matching for document retrieval.
+- **5-Stage Deep Memory Offloading Engine** that flushes VRAM to 0% and trims System RAM to ~1–2 MB after idle timeout or manual trigger.
+- **Persistent Chat History & Settings** stored locally in `chat_history.db`.
+- **Streamlit Modern Web Interface** featuring token-by-token streaming, self-healing model state verification, and clean collapsible source expanders.
 
 ---
 
-## How It Works
+## Key Features
+
+- ⚡ **CUDA GPU Acceleration**: Automatically detects and registers `CUDAExecutionProvider` for high-throughput local token generation.
+- 🧹 **5-Stage Memory Offloader**:
+  - **Manual Offload**: `⚡ Free Memory Now` button in sidebar.
+  - **Auto-Free Memory Timer**: Configurable timeout (`30s`, `2m`, `5m`, `30m`, `Keep`) that starts counting **only after response delivery** and offloads memory silently.
+  - **Process Tree Memory Trimming**: Uses Win32 `OpenProcess` + `EmptyWorkingSet` to return System RAM to ~1–2 MB and GPU VRAM to 0%.
+- 🛡️ **Self-Healing Model State**: Automatically detects offloaded models when a new question is typed, re-initializing GPU resources seamlessly without app crashes.
+- 📄 **Clean Text Output**: Inline citations (`(Source: ...)` or `Reference: ...`) are stripped from the AI response and presented cleanly inside collapsible `📄 Sources` expanders.
+- 💾 **Persistent Settings & History**: Chat history and Auto-Free timer preferences are saved to `chat_history.db` and persist across terminal restarts.
+
+---
+
+## Architecture & Memory Engine
 
 ```
-User types a question
-        │
-        ▼
- [Embedding Model]  ← qwen3-embedding-0.6b (local)
- Convert question into a numerical vector (embedding)
-        │
-        ▼
- [SQLite Database]
- Compare query vector against all stored chunk vectors
- using Cosine Similarity → retrieve top 5 matches
-        │
-        ▼
- [System Prompt Builder]
- Inject retrieved chunks into a strict system prompt:
- "Answer using ONLY the context below. If not found, say I don't know."
-        │
-        ▼
- [Chat Model]  ← phi-3.5-mini / phi-4-mini / qwen2.5-0.5b (local)
- Generate a grounded, cited answer
-        │
-        ▼
- Streamlit UI displays the answer + source citations
+ [User Prompt] ──► [Self-Healing State Check] ──► [CUDA Embedding Model] 
+                                                        │
+ [Collapsible UI Sources] ◄── [Streamed Response] ◄── [CUDA Chat LLM] ◄── [SQLite Vector Match]
+                                                        │
+                                                [Memory Offload Engine]
+                                            (Unload C++ Models + Win32 Trim)
 ```
+
+For complete technical specifications, see **[DOCUMENTATION.md](file:///d:/antigravity%20Projects/Azure%20Foundry%20Local%20LLM/final_project/DOCUMENTATION.md)**.
 
 ---
 
@@ -64,86 +61,93 @@ User types a question
 ```
 final_project/
 │
-├── app.py                  # Streamlit web interface (entry point)
-├── rag_core.py             # Core RAG pipeline logic
-├── ingest.py               # Knowledge base ingestion script
-├── sdk_utils.py            # Foundry Local SDK helpers
-├── test_suite.py           # Automated functional tests (Week 5)
-├── requirements.txt        # Python dependencies
-├── .gitignore              # Git exclusions
+├── app.py                  # Streamlit web interface & settings UI
+├── rag_core.py             # RAG pipeline: vector search & prompt execution
+├── sdk_utils.py            # Foundry Local SDK & 5-stage memory offload engine
+├── chat_history.py         # Persistent chat session & settings SQLite storage
+├── ingest.py               # Document chunking & embedding ingestion pipeline
+├── test_suite.py           # Automated functional test runner
+├── requirements.txt        # Python package dependencies
 │
-├── source_documents/       # Raw knowledge base (.txt files)
-│   ├── profile_overview.txt
-│   ├── official_transcript.txt
-│   ├── academic_and_experience.txt
-│   ├── projects_and_technical.txt
-│   └── microsoft_ai_innovators_rag_project.txt
-│
-└── .streamlit/             # Streamlit configuration
+├── source_documents/       # Local knowledge base (.docx, .pdf, .txt supported)
+├── chat_history.db         # Persistent chat session & preference database
+└── knowledge_base.db       # Embedded vector database (generated via ingest.py)
 ```
-
-> **Note:** `knowledge_base.db` is generated by `ingest.py` and is excluded from Git (see `.gitignore`). Run `python ingest.py` after cloning to build it.
 
 ---
 
-## Setup Instructions
+## Setup & Installation
 
 ### Prerequisites
-- Windows 10/11 (64-bit)
+- Windows 10 / 11 (64-bit) with NVIDIA GPU (CUDA support recommended)
 - Python 3.10 or later
-- [Microsoft Foundry Local](https://github.com/microsoft/Foundry-Local) installed and running
+- [Microsoft Foundry Local](https://github.com/microsoft/Foundry-Local) runtime installed
 
-### 1. Clone the repository
+### 1. Clone & Navigate
 ```bash
 git clone https://github.com/Ferdaws-c/local-rag-intelligence-system.git
 cd local-rag-intelligence-system/final_project
 ```
 
-### 2. Install dependencies
+### 2. Install Dependencies
 ```bash
 pip install -r requirements.txt
 ```
 
-### 3. Build the knowledge base
-This downloads the embedding model (first run only) and populates `knowledge_base.db`:
+### 3. Ingest Documents into Vector Store
 ```bash
 python ingest.py
 ```
 
 ---
 
-## Running the App
+## Running the Application
 
 ```bash
 streamlit run app.py
 ```
 
-The app opens automatically at `http://localhost:8501`.
-
-**On first launch**, the selected chat model will be downloaded. This is a one-time operation — subsequent launches load from the local cache instantly.
-
-**Model options (selectable in the sidebar):**
-
-| Model | Speed | Quality |
-|---|---|---|
-| `qwen2.5-0.5b` | ~1–2s | Basic |
-| `phi-3.5-mini` | ~5–10s | Good *(default)* |
-| `phi-4-mini` | ~8–15s | Best |
+Open `http://localhost:8501` in your web browser.
 
 ---
 
-## Running the Tests
+## Automated Testing
 
+Run the 12-case automated functional test suite:
 ```bash
 python test_suite.py
 ```
+Results are saved to `test_results.txt`.
 
-Runs 12 automated test cases across three categories:
-- **IN-CONTEXT** — questions the assistant should answer from the documents
-- **OUT-OF-CONTEXT** — questions it should refuse with "I don't have that information"
-- **EDGE CASES** — greetings, single characters, vague inputs
+---
 
-Results are printed to the console and saved to `test_results.txt`.
+## Performance & Speed
+
+Answer latency is dominated by the **local LLM**, not by retrieval. Every query prints a diagnostic line to the terminal running Streamlit, e.g.:
+
+```
+[perf] retrieval=0.41s  generation=18.7s  tokens=74  (4.0 tok/s)
+```
+
+- **`retrieval`** is the embedding + cosine search. This is nearly always < 1s and is *not* the problem.
+- **`generation`** is the model producing the answer. This is where the seconds go. `tok/s` tells you your effective decode speed.
+
+If `generation` is large, work through these in order of impact:
+
+1. **Use hardware acceleration (biggest win, zero quality loss).** On CPU-only, a 3.8B model like `phi-3.5-mini` generates ~1.1 tokens/second. To enable NVIDIA GPU acceleration, `sdk_utils.py` automatically checks for and registers `CUDAExecutionProvider` via the Foundry Local SDK during app/script initialization (`manager.download_and_register_eps(["CUDAExecutionProvider"])`).
+   
+   - **One-time Process Launch Cost:** Registering CUDA EP is scoped per Python process and takes ~6-7 minutes on initial startup per process session (`streamlit run app.py`). Once registered, Streamlit's `@st.cache_resource` keeps the GPU-accelerated model warm for all subsequent queries.
+   - **Verify Execution Providers & Model Variants:** Run the diagnostic script to check discoverable execution providers and active model variants for your system:
+     ```bash
+     python scratch/diagnose_gpu.py
+     ```
+     When registered, `diagnose_gpu.py` will report `ep=CUDAExecutionProvider` and `device=GPU` for selected catalog models (e.g. `Phi-3.5-mini-instruct-cuda-gpu:2`). Moving from CPU to GPU cuts query generation time dramatically.
+
+2. **Pick a faster model in the sidebar.** `qwen2.5-0.5b` is ~7× smaller than `phi-3.5-mini` and responds far faster, at some cost to answer quality. Use it for quick demos; keep `phi-3.5-mini` (default) for graded accuracy.
+
+3. **Keep the model warm.** The sidebar's *Auto-Free Memory* setting unloads the model after idle time. If it unloads between questions, the *next* question pays a reload penalty. During a demo, set it to **"Keep (Don't free)"** so every answer is measured against a warm model.
+
+The pipeline itself is already tuned for speed without touching accuracy: the prompt instructions are compact, retrieved context is trimmed to its substantive lines, and generation is capped at a concise 3-sentence answer.
 
 ---
 

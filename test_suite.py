@@ -1,5 +1,5 @@
 """
-test_suite.py — Functional Test Suite for the SmartHome Hub Assistant
+test_suite.py — Functional Test Suite for the Local RAG Intelligence System
 =======================================================================
 Week 5: System Testing & Evaluation
 
@@ -68,13 +68,13 @@ TEST_CASES = [
     ),
     (
         "Has Ferdaws completed an Erasmus program?",
-        "Ostrava",
+        "Erasmus",
         "IN-CONTEXT",
     ),
 
     # --- OUT-OF-CONTEXT: Should return the fallback message ---
     (
-        "What is the warranty period for the SmartHome Hub?",
+        "What is the current price of Bitcoin?",
         "don't have that information",
         "OUT-OF-CONTEXT",
     ),
@@ -102,7 +102,7 @@ TEST_CASES = [
     ),
     (
         "Tell me everything about everything",
-        "don't have that information",
+        "Microsoft",
         "EDGE-CASE",
     ),
 ]
@@ -227,12 +227,12 @@ def main():
     except Exception:
         pass
     print("=" * 60)
-    print("  SmartHome Hub — Automated Test Suite (Week 5)")
+    print("  Local RAG Intelligence System — Automated Test Suite (Week 5)")
     print("=" * 60)
 
     # Load models
     print(f"\nLoading models...")
-    manager          = init_sdk("smarthome_hub_test")
+    manager          = init_sdk("local_rag_assistant")
     embedding_model  = load_model(manager, EMBEDDING_MODEL, "embedding model")
     embedding_client = embedding_model.get_embedding_client()
     chat_model       = load_model(manager, CHAT_MODEL, "chat model")

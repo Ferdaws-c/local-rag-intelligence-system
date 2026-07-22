@@ -67,7 +67,7 @@
 
 **[Wait for answer to finish, then point to the 'Sources' panel at the bottom]**
 
-> "Not only does it answer correctly, but if you look down here at the 'Sources' panel, it shows us exactly which document it read to find that answer. It pulled this right from my `official_transcript.txt`."
+> "Not only does it answer correctly, but if you look down here at the 'Sources' panel, it shows us exactly which document it read to find that answer. It pulled this right from my `official_transcript.docx`."
 
 ---
 
