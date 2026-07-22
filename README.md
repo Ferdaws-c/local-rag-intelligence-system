@@ -2,9 +2,12 @@
 
 An advanced, 100% offline AI-powered Q&A assistant built using **Retrieval-Augmented Generation (RAG)** and **Microsoft Foundry Local**. All AI inference and vector searches run entirely on-device with CUDA GPU acceleration — no cloud API keys or internet connection required.
 
+🎬 **[Watch Live Project Demonstration Video](https://drive.google.com/file/d/1lNyXGFHMmbMe7b-jhc3UwWixI-JnVigW/view?usp=sharing)**
+
 ---
 
 ## 📋 Table of Contents
+- [🎬 Live Demo Video](#-live-demo-video)
 - [What Is This?](#what-is-this)
 - [Key Features](#key-features)
 - [Architecture & Memory Engine](#architecture--memory-engine)
@@ -14,6 +17,16 @@ An advanced, 100% offline AI-powered Q&A assistant built using **Retrieval-Augme
 - [Automated Testing](#automated-testing)
 - [Performance & Hardware Requirements](#performance--hardware-requirements)
 - [License](#license)
+
+---
+
+## 🎬 Live Demo Video
+
+Watch a complete walkthrough and live demonstration of the system in action:
+
+▶️ **[Watch the Video Demonstration on Google Drive](https://drive.google.com/file/d/1lNyXGFHMmbMe7b-jhc3UwWixI-JnVigW/view?usp=sharing)**
+
+For the spoken video presentation guide and script, see **[DEMO_SCRIPT.md](DEMO_SCRIPT.md)**.
 
 ---
 

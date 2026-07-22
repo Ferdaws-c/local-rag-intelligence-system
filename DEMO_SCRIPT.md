@@ -2,6 +2,8 @@
 ## Local RAG Intelligence System — Microsoft Foundry Local
 ### Presentation & Demonstration Guide (5–8 Minutes)
 
+▶️ **[Watch the Live Recorded Demo Video on Google Drive](https://drive.google.com/file/d/1lNyXGFHMmbMe7b-jhc3UwWixI-JnVigW/view?usp=sharing)**
+
 ---
 
 ## ⏱️ Target Video Duration: 5–8 Minutes
