@@ -65,7 +65,7 @@ The system enforces strict anti-hallucination and presentation rules across ever
                                             (Unload C++ Models + Win32 Trim)
 ```
 
-For complete technical specifications, see **[DOCUMENTATION.md](file:///d:/antigravity%20Projects/Azure%20Foundry%20Local%20LLM/final_project/DOCUMENTATION.md)**.
+For complete technical specifications, see **[DOCUMENTATION.md](DOCUMENTATION.md)**.
 
 ---
 
