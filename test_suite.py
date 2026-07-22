@@ -102,7 +102,7 @@ TEST_CASES = [
     ),
     (
         "Tell me everything about everything",
-        "Microsoft",
+        "Ferdaws",
         "EDGE-CASE",
     ),
 ]
