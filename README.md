@@ -41,6 +41,19 @@ This project is a production-grade local RAG application that combines:
 
 ---
 
+## 🎯 Grounded RAG Extraction Rules
+
+The system enforces strict anti-hallucination and presentation rules across every prompt execution:
+
+1. **Strict Context Grounding**: The LLM uses ONLY the exact facts written in the retrieved Context chunks; it is strictly forbidden to guess, extrapolate, or use outside knowledge.
+2. **Deterministic Out-of-Context Refusal**: If the retrieved Context does not contain the answer, the assistant outputs EXACTLY: `"I don't have that information."`
+3. **No Inline Citation Clutter**: The model is instructed to omit inline file references or source citations (e.g. `(Source: ...)` or `Reference: ...`). All document sources are cleanly structured and displayed below the answer in a dedicated collapsible `📄 Sources` UI expander.
+4. **No Meta-Commentary or Disclaimers**: The LLM responds with direct, concise statements without preamble, notes, or parenthesized commentary.
+5. **Zero-Cost Synonym Query Expansion**: Uses a fast Python dictionary lookup to expand domain synonyms before vector matching, ensuring high retrieval precision without extra LLM latency.
+6. **Relevance Thresholding**: Rejects any retrieved vector chunks scoring below a 25% cosine similarity threshold (`score < 0.25`).
+
+---
+
 ## Architecture & Memory Engine
 
 ```
