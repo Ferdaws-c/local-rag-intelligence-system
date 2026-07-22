@@ -202,19 +202,42 @@ def load_and_chunk_documents(documents_dir: Path, target_filename: str = None) -
 # ------------------------------------------------------------------
 # Embedding Generation
 # ------------------------------------------------------------------
-def generate_embeddings(chunks: list[dict], embedding_client) -> list[dict]:
+def generate_embeddings(chunks: list[dict], embedding_client, batch_size: int = 64) -> list[dict]:
     """
-    Sends all chunk texts to the embedding model in a single batch request
+    Sends chunk texts to the embedding model in sub-batches of 64
     and attaches the resulting vectors back to each chunk dict.
+    Pings MemoryMonitor during each batch to prevent idle timeouts during large ingestions.
 
     Returns:
         The same list with an 'embedding' key added to each dict.
     """
-    texts    = [chunk["content"] for chunk in chunks]
-    response = embedding_client.generate_embeddings(texts)
+    try:
+        from sdk_utils import MemoryMonitor
+        MemoryMonitor.ping()
+    except Exception:
+        pass
 
-    for i, item in enumerate(response.data):
-        chunks[i]["embedding"] = item.embedding
+    texts = [chunk["content"] for chunk in chunks]
+    total = len(texts)
+
+    for start_idx in range(0, total, batch_size):
+        try:
+            from sdk_utils import MemoryMonitor
+            MemoryMonitor.ping()
+        except Exception:
+            pass
+
+        batch_texts = texts[start_idx : start_idx + batch_size]
+        response = embedding_client.generate_embeddings(batch_texts)
+
+        for j, item in enumerate(response.data):
+            chunks[start_idx + j]["embedding"] = item.embedding
+
+    try:
+        from sdk_utils import MemoryMonitor
+        MemoryMonitor.ping()
+    except Exception:
+        pass
 
     return chunks
 
@@ -319,7 +342,19 @@ def run_ingestion(embedding_client, progress_callback=None, target_file=None, is
         target_file       : If set, only this file is processed (incremental).
         is_delete         : If True, target_file is removed from DB without embedding.
     """
+    try:
+        from sdk_utils import MemoryMonitor
+        MemoryMonitor.set_busy(True)
+        MemoryMonitor.ping()
+    except Exception:
+        pass
+
     def _report(pct: float, label: str):
+        try:
+            from sdk_utils import MemoryMonitor
+            MemoryMonitor.ping()
+        except Exception:
+            pass
         if progress_callback:
             try:
                 progress_callback(pct, label)
@@ -373,6 +408,13 @@ def run_ingestion(embedding_client, progress_callback=None, target_file=None, is
 
     except Exception as e:
         return {"status": "error", "message": str(e)}
+    finally:
+        try:
+            from sdk_utils import MemoryMonitor
+            MemoryMonitor.set_busy(False)
+            MemoryMonitor.ping()
+        except Exception:
+            pass
 
 
 # ------------------------------------------------------------------

@@ -345,9 +345,12 @@ class MemoryMonitor:
 
     @classmethod
     def force_unload_after(cls, delay_seconds: int):
-        """Forcefully unloads all models after a specific delay, ignoring standard timeout locks."""
+        """Unloads models after a specific delay, respecting user Keep setting and active busy state."""
         def _unload():
             time.sleep(delay_seconds)
+            # NEVER unload if user selected 'Keep (don't free)' (timeout_seconds == 0) or if system is busy
+            if cls.timeout_seconds == 0 or cls.is_busy:
+                return
             cls.is_offloaded = True
             unload_all_models()
         threading.Thread(target=_unload, daemon=True).start()
