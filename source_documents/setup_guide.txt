@@ -1,0 +1,19 @@
+SmartHome Hub v2.0 — Setup Guide
+
+What is Inside the Box
+Your SmartHome Hub v2.0 package includes: one SmartHome Hub v2.0 unit, one 12V DC power adapter, one 1-meter Cat5e Ethernet cable, one wall-mounting bracket with screws, and this quick-start guide. If any item is missing, contact support within 14 days of purchase.
+
+Step 1: Physical Placement
+Place the hub in a central location in your home for maximum wireless coverage. Keep the device at least 1 meter away from other electronics such as microwaves, cordless phones, and baby monitors, which can cause wireless interference. Do not place the device inside enclosed cabinets or behind thick concrete walls, as this will reduce Wi-Fi and Zigbee signal range.
+
+Step 2: Powering the Device On
+Connect the power adapter to the hub and plug it into a power outlet. The LED ring on the top of the device will turn solid white within 15 seconds, indicating the device has booted successfully. If the LED does not turn on, check that the power outlet is functioning and that the adapter is firmly connected.
+
+Step 3: Downloading the SmartHome App
+Download the SmartHome App from the Apple App Store or Google Play Store on your smartphone. Create an account or log in if you already have one. Open the app and tap "Set Up a New Hub" to begin the guided network configuration process.
+
+Step 4: Connecting the Hub to Your Wi-Fi Network
+In the SmartHome App, follow the on-screen instructions to connect the hub to your home Wi-Fi network. The app will ask you to select your network name (SSID) and enter your Wi-Fi password. The hub will then attempt to connect; this process takes approximately 30 seconds. Once connected, the LED will return to solid white.
+
+Step 5: Adding Your First Smart Device
+After the hub is connected to your network, tap "Add Device" in the app. Put your smart device into pairing mode according to its manufacturer instructions. The hub will automatically scan for and detect devices in pairing mode. Select the device from the list and follow the prompts to complete setup.

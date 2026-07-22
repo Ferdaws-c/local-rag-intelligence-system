@@ -1,0 +1,19 @@
+SmartHome Hub v2.0 — Technical Specifications
+
+Processor and Memory
+The SmartHome Hub v2.0 is powered by a quad-core ARM Cortex-A55 processor running at 1.8GHz. It includes 2GB of LPDDR4 RAM and 8GB of internal eMMC storage for automations, logs, and device state history.
+
+Wireless Connectivity
+The hub supports dual-band Wi-Fi (802.11 a/b/g/n/ac) on both 2.4GHz and 5GHz bands. Indoor Wi-Fi range is approximately 30 meters from the router. It also includes a dedicated Zigbee 3.0 radio and a Z-Wave Plus radio for direct low-power device communication without relying on Wi-Fi.
+
+Wired Connectivity
+One Gigabit Ethernet (RJ-45) port is available for a wired network connection. A wired connection is recommended for environments with high Wi-Fi interference, as it provides a more stable and lower-latency connection.
+
+Power Supply
+The hub uses a 12V DC, 2A power adapter (included in the box). There is no built-in battery. Power consumption under normal load is approximately 8 watts. The device does not support Power over Ethernet (PoE).
+
+Physical Dimensions and Environment
+Dimensions: 120mm x 120mm x 28mm. Weight: 320 grams including power adapter. Operating temperature range: 0°C to 40°C. Storage temperature range: -20°C to 60°C. The device is rated for indoor use only and is not waterproof or dust-resistant.
+
+LED Indicator Reference
+Solid white: Device is on and operating normally. Blinking blue: Device is searching for a Wi-Fi network or pairing with a new device. Solid red: Factory reset in progress. Blinking red: Firmware update in progress. Do not unplug the device during a firmware update.

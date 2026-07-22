@@ -29,6 +29,5 @@ Thumbs.db
 test_results.txt
 scratch/
 
-# ── Private Source Documents ─────────────────────────────────────────
-source_documents/*
-!source_documents/.gitkeep
+# ── Source Documents ─────────────────────────────────────────
+# Tracked in repository
