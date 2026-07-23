@@ -142,7 +142,7 @@ def run_tests(embedding_client, chat_client) -> list[dict]:
             question=query,
             embedding_client=embedding_client,
             chat_client=chat_client,
-            top_k=3,
+            top_k=5,
         )
         elapsed = time.time() - start
         answer  = result["answer"]

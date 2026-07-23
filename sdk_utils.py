@@ -212,11 +212,10 @@ def unload_all_models() -> dict:
                 except Exception as exc:
                     print(f"[sdk_utils] Catalog exhaustive variant sweep note: {exc}")
 
-            # 1c. Hardcoded fallback alias sweep for core models
+            # 1c. Hardcoded fallback alias sweep for active core models
             known_aliases = [
-                "qwen3-embedding-0.6b", "phi-3.5-mini", "qwen2.5-0.5b", "phi-4-mini",
-                "qwen3-embedding-0.6b-cuda-gpu:1", "Phi-3.5-mini-instruct-cuda-gpu:2",
-                "qwen2.5-0.5b-instruct-cuda-gpu:4", "Phi-4-mini-instruct-cuda-gpu:5"
+                "qwen3-embedding-0.6b", "phi-3.5-mini",
+                "qwen3-embedding-0.6b-cuda-gpu:1", "Phi-3.5-mini-instruct-cuda-gpu:2"
             ]
             for alias in known_aliases:
                 try:

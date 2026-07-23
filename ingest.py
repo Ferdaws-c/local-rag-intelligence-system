@@ -167,7 +167,7 @@ def load_and_chunk_documents(documents_dir: Path, target_filename: str = None) -
         if not raw_text:
             continue
 
-        lines = [l for l in raw_text.splitlines()]  # keep ALL lines, even blank ones for spacing
+        lines = raw_text.splitlines()  # keep ALL lines, even blank ones for spacing
         non_empty_lines = [l.strip() for l in lines if l.strip()]
 
         if not non_empty_lines:

@@ -50,7 +50,7 @@ def cosine_similarity(vec_a: list[float], vec_b: list[float]) -> float:
 @st.cache_data(ttl=30)
 def get_top_chunks(query: str,
                    _embedding_client,
-                   top_k: int = 8) -> list[dict]:
+                   top_k: int = 5) -> list[dict]:
     """
     Embeds the query, fetches all stored vectors from SQLite, ranks
     them by cosine similarity, and returns the top_k matches.
@@ -120,9 +120,10 @@ _SYNONYM_MAP: dict[str, str] = {
     "projects": "codebase technical software applications systems",
 }
 
-def expand_query(query: str, chat_client=None, chat_history: list = None) -> str:
+def expand_query(query: str, chat_history: list = None) -> str:
     """
-    Expands the query using a zero-cost Python synonym map.
+    Expands the query using a zero-cost Python synonym map and injects
+    recent conversation context for implicit pronoun resolution.
     No LLM call needed — dramatically reduces latency.
     """
     words = query.lower().split()
@@ -152,7 +153,7 @@ def expand_query(query: str, chat_client=None, chat_history: list = None) -> str
 def answer_query(question: str,
                  embedding_client,
                  chat_client,
-                 top_k: int = 3,
+                 top_k: int = 5,
                  stream_callback=None,
                  chat_history: list = None) -> dict:
     """
@@ -180,8 +181,8 @@ def answer_query(question: str,
             "sources" : list[dict], # Retrieved chunks used as context
         }
     """
-    # A — Expand query using zero-cost synonym map (no LLM call)
-    expanded_query = expand_query(question)
+    # A — Expand query using zero-cost synonym map + conversational context (no LLM call)
+    expanded_query = expand_query(question, chat_history=chat_history)
 
     # B — Retrieve relevant document chunks using the expanded query
     retrieval_start = time.perf_counter()
@@ -218,10 +219,6 @@ def answer_query(question: str,
 
     # Instead of relying on a "system" role (which many local models/templates silently drop),
     # we inject the rules, context, and question directly into the final "user" prompt.
-    # NOTE: The instruction block is deliberately compact. Every constraint from
-    # the original 7-rule version is preserved, but merged into 4 lines to cut the
-    # number of prompt tokens the model must process on every query (faster prefill)
-    # — this does not relax any anti-hallucination rule.
     final_prompt = (
         "You are a strict RAG extraction bot. Obey every rule:\n"
         "1. Use ONLY the exact facts in the Context below; never guess, use outside knowledge, or calculate numbers.\n"
@@ -241,8 +238,7 @@ def answer_query(question: str,
     messages.append({"role": "user", "content": final_prompt})
 
     # D — Stream the response with a hard token cap to prevent runaway generation.
-    # 120 tokens comfortably fits a cited 3-sentence answer; the cap only bites on
-    # pathological rambling, so lowering it from 140 costs nothing on normal answers.
+    # 120 tokens comfortably fits a 3-sentence answer.
     response_parts = []
     token_count    = 0
     MAX_TOKENS     = 120
@@ -256,10 +252,7 @@ def answer_query(question: str,
                 token_count += 1
 
                 if stream_callback:
-                    # Clean trailing citation patterns in live stream display
-                    raw_text = "".join(response_parts)
-                    clean_stream = re.sub(r"\s*\(?\s*(?:Source|Reference|Doc|Document|Files?)\s*:\s*.*?\)?$", "", raw_text, flags=re.IGNORECASE).strip()
-                    stream_callback(clean_stream)
+                    stream_callback("".join(response_parts))
 
                 if token_count >= MAX_TOKENS:
                     break

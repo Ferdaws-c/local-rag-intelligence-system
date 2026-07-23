@@ -13,16 +13,22 @@ Features:
   - Light / dark mode compatible
 """
 
-import threading
-import uuid
-from pathlib import Path
+import os
+import subprocess
+import sys
 
-# --- Helper for UI preview formatting ---
-import re
-def clean_source_preview(content: str) -> str:
-    cleaned = re.sub(r"={3,}|-{3,}", "", content)
-    cleaned = re.sub(r"\s+", " ", cleaned).strip()
-    return cleaned[:150] + "..." if len(cleaned) > 150 else cleaned
+def open_in_default_app(filepath: Path):
+    """Opens a document using the OS default application (Word, PDF reader, etc.)."""
+    try:
+        if sys.platform == "win32":
+            os.startfile(str(filepath))
+        elif sys.platform == "darwin":
+            subprocess.Popen(["open", str(filepath)])
+        else:
+            subprocess.Popen(["xdg-open", str(filepath)])
+        return True
+    except Exception as e:
+        return str(e)
 
 DOCUMENTS_DIR = Path(__file__).parent / "source_documents"
 
@@ -604,17 +610,19 @@ with st.sidebar:
             max_len   = 20
             short_name = doc.name if len(doc.name) <= max_len else doc.name[:max_len - 2] + "…"
             is_expanded = st.session_state.doc_expanded.get(doc.name, False)
-            is_viewing  = st.session_state.viewing_doc == doc.name
 
             # Row: doc name button | + toggle
             d_col, p_col = st.columns([5, 1])
             with d_col:
-                # Clicking the name opens/closes the doc viewer in main area
-                label = f"{'▶ ' if is_viewing else '📄 '}{short_name}"
+                # Clicking the name opens the file directly in the OS default application (Word, PDF reader, etc.)
+                label = f"📄 {short_name}"
                 st.markdown('<div class="doc-name-btn">', unsafe_allow_html=True)
-                if st.button(label, key=f"view_{doc.name}", use_container_width=True, help=doc.name, disabled=is_ui_locked):
-                    st.session_state.viewing_doc = None if is_viewing else doc.name
-                    st.rerun()
+                if st.button(label, key=f"view_{doc.name}", use_container_width=True, help=f"Open {doc.name} in default application", disabled=is_ui_locked):
+                    res = open_in_default_app(doc)
+                    if res is True:
+                        st.toast(f"📖 Opening **{doc.name}** in default application…")
+                    else:
+                        st.toast(f"❌ Error opening {doc.name}: {res}")
                 st.markdown('</div>', unsafe_allow_html=True)
             with p_col:
                 # "+" icon toggles inline actions
@@ -848,52 +856,7 @@ if st.session_state.active_session_id is None or \
 
 active_session_id = st.session_state.active_session_id
 
-# ------------------------------------------------------------------
-# Main Area — Document Viewer (shown when a doc name is clicked)
-# ------------------------------------------------------------------
-if st.session_state.viewing_doc:
-    vdoc_path = DOCUMENTS_DIR / st.session_state.viewing_doc
-    if vdoc_path.exists():
-        close_col, title_col = st.columns([1, 7])
-        with close_col:
-            if st.button("✕", key="close_viewer", help="Close viewer", disabled=is_ui_locked):
-                st.session_state.viewing_doc = None
-                st.rerun()
-        with title_col:
-            st.markdown(f"**📄 {st.session_state.viewing_doc}**")
-        st.divider()
 
-        suffix = vdoc_path.suffix.lower()
-        if suffix == ".txt":
-            content = vdoc_path.read_text(encoding="utf-8")
-            st.text_area(
-                "Document Content",
-                value=content,
-                height=400,
-                label_visibility="collapsed",
-                disabled=True,
-            )
-        elif suffix == ".pdf":
-            try:
-                import pypdf
-                reader = pypdf.PdfReader(str(vdoc_path))
-                text   = "\n\n".join(p.extract_text() or "" for p in reader.pages)
-                st.text_area("PDF Content", value=text, height=400,
-                             label_visibility="collapsed", disabled=True)
-            except Exception as e:
-                st.error(f"Could not read PDF: {e}")
-        elif suffix == ".docx":
-            try:
-                import docx
-                doc_obj = docx.Document(str(vdoc_path))
-                text    = "\n\n".join(p.text for p in doc_obj.paragraphs if p.text)
-                st.text_area("DOCX Content", value=text, height=400,
-                             label_visibility="collapsed", disabled=True)
-            except Exception as e:
-                st.error(f"Could not read DOCX: {e}")
-        st.divider()
-    else:
-        st.session_state.viewing_doc = None
 
 # ------------------------------------------------------------------
 # Main Chat Area
