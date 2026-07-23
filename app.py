@@ -31,6 +31,12 @@ def open_in_default_app(filepath: Path):
     except Exception as e:
         return str(e)
 
+import re
+def clean_source_preview(content: str) -> str:
+    cleaned = re.sub(r"={3,}|-{3,}", "", content)
+    cleaned = re.sub(r"\s+", " ", cleaned).strip()
+    return cleaned[:150] + "..." if len(cleaned) > 150 else cleaned
+
 DOCUMENTS_DIR = Path(__file__).parent / "source_documents"
 
 import streamlit as st
