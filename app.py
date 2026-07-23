@@ -16,6 +16,7 @@ Features:
 import os
 import subprocess
 import sys
+from pathlib import Path
 
 def open_in_default_app(filepath: Path):
     """Opens a document using the OS default application (Word, PDF reader, etc.)."""
